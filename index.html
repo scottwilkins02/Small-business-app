@@ -109,7 +109,7 @@
   .ios-header-inner{max-width:1180px;margin:0 auto;padding:12px 20px 10px;display:flex;align-items:center;gap:10px;min-height:34px;}
   .ios-back-btn{background:none;border:none;color:var(--navy);font-size:15px;font-weight:600;padding:4px 4px 4px 0;flex:none;}
   .ios-back-btn[hidden]{display:none;}
-  .ios-title{font-size:25px;font-weight:700;letter-spacing:-0.015em;font-family:'Space Grotesk',sans-serif;flex:1;min-width:0;}
+  .ios-title{font-size:25px;font-weight:700;letter-spacing:-0.015em;font-family:'Space Grotesk',sans-serif;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .ios-header-actions{display:flex;align-items:center;gap:8px;flex:none;}
 
   /* ---------- Segmented picker (Estimator sheet chooser) ---------- */
@@ -1810,27 +1810,22 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 </script>
 <script>
 window.addEventListener("error", function(e){
-  var b = document.getElementById("jsErrorBanner");
-  if (b){
-    b.style.display = "block";
-    b.textContent = "Something went wrong running the calculator: " + e.message + " — try reloading, or opening this file directly in Safari/Chrome rather than a preview pane.";
+  // "Script error." with no filename is the browser's standard signature
+  // for an error it won't attribute to our own code — typically a browser
+  // extension, Safari's own injected tooling, or a genuinely cross-origin
+  // script, not this app (all of this app's own JS is inline, same-origin,
+  // so a real bug here always comes with a filename/line). Alarming the
+  // person over something we can't even pin on ourselves does more harm
+  // than good, so that specific case is logged quietly instead of shown.
+  if (e.message === "Script error." && !e.filename){
+    console.warn("Suppressed unattributable window error:", e);
+    return;
   }
-});
-window.addEventListener("unhandledrejection", function(e){
-  // Temporary addition alongside the "error" listener above: catches
-  // rejected Promises too (e.g. from Google Identity Services' internal
-  // async handling), which the plain "error" event does not. Being used
-  // right now specifically to surface exactly why Google Drive sign-in is
-  // failing on one user's iPad, where there's no way to open real
-  // devtools — safe to remove once that's diagnosed.
   var b = document.getElementById("jsErrorBanner");
   if (b){
     b.style.display = "block";
-    var reason = e.reason;
-    var detail;
-    try { detail = (reason && reason.message) ? reason.message : JSON.stringify(reason); }
-    catch(_){ detail = String(reason); }
-    b.textContent = "Unhandled error: " + detail;
+    var where = e.filename ? " (" + e.filename.split("/").pop() + ":" + e.lineno + ")" : "";
+    b.textContent = "Something went wrong running the calculator: " + e.message + where + " — try reloading, or opening this file directly in Safari/Chrome rather than a preview pane.";
   }
 });
 
@@ -5493,7 +5488,8 @@ window.addEventListener("unhandledrejection", function(e){
      ============================================================ */
   var GDRIVE_CLIENT_ID = "922880389356-j2mal1ev5fhseeaaep0elc1ckvko68uj.apps.googleusercontent.com"; // ← from Google Cloud Console → APIs & Services → Credentials → OAuth Client ID. Also set as GOOGLE_CLIENT_ID in Vercel's environment variables — the server side needs its own copy, since /api functions don't read this inline script.
   var GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"; // Non-sensitive scope: only files this app itself creates, not the user's whole Drive — deliberately chosen to avoid Google's heavier verification tiers. Do not broaden this without re-reading why (project history).
-  var GDRIVE_FILENAME = "materials-estimator-backup.json"; // Fixed name, one file, overwritten each sync.
+  var GDRIVE_FILENAME = "Morx.json"; // Fixed name, one file, overwritten each sync.
+  var GDRIVE_FOLDER_NAME = "Morx"; // The backup file lives inside a folder of this name, found-or-created on first sync.
   var GDRIVE_TOKEN_SAFETY_MARGIN_MS = 2*60*1000; // Google's access token is short-lived (~1hr) even though reconnecting is now rare — a larger margin would discard a meaningfully bigger fraction of its usable life.
 
   function gdriveSettingsId(){ return "gdriveAuth"; }
@@ -5502,6 +5498,7 @@ window.addEventListener("unhandledrejection", function(e){
 
   var gdriveAuth = { accessToken:"", expiresAt:0, wasConnected:false, email:"" };
   var gdriveFileIdCache = ""; // Drive's file ID for our backup file, once known — avoids a list-then-upload round trip on every save.
+  var gdriveFolderIdCache = ""; // Drive's folder ID for the Morx folder, once known/created — same purpose.
 
   function gdriveTokenValid(){
     return !!(gdriveAuth.accessToken && gdriveAuth.expiresAt > (Date.now()+GDRIVE_TOKEN_SAFETY_MARGIN_MS));
@@ -5520,6 +5517,7 @@ window.addEventListener("unhandledrejection", function(e){
   function gdriveClearAuthRecord(){
     gdriveAuth = { accessToken:"", expiresAt:0, wasConnected:false, email:"" };
     gdriveFileIdCache = "";
+    gdriveFolderIdCache = "";
     return bizDelete("settings", gdriveSettingsId());
   }
 
@@ -5600,19 +5598,44 @@ window.addEventListener("unhandledrejection", function(e){
     });
   }
 
+  // ---------- Find (or create) the Morx folder our backup file lives in ----------
+  function gdriveFindOrCreateFolderId(){
+    if (gdriveFolderIdCache) return Promise.resolve(gdriveFolderIdCache);
+    var listUrl = "https://www.googleapis.com/drive/v3/files"
+      + "?q="+encodeURIComponent("name = '"+GDRIVE_FOLDER_NAME+"' and mimeType = 'application/vnd.google-apps.folder' and trashed = false")
+      + "&fields="+encodeURIComponent("files(id)")
+      + "&pageSize=1";
+    return fetch(listUrl, { headers:{ "Authorization":"Bearer "+gdriveAuth.accessToken } })
+      .then(function(resp){ if (!resp.ok) throw new Error("Folder list failed ("+resp.status+")"); return resp.json(); })
+      .then(function(data){
+        if (data.files && data.files.length){ gdriveFolderIdCache = data.files[0].id; return gdriveFolderIdCache; }
+        // Doesn't exist yet — create it. drive.file scope covers this fine,
+        // since a folder created by the app is just another file it owns.
+        return fetch("https://www.googleapis.com/drive/v3/files", {
+          method: "POST",
+          headers:{ "Authorization":"Bearer "+gdriveAuth.accessToken, "Content-Type":"application/json" },
+          body: JSON.stringify({ name: GDRIVE_FOLDER_NAME, mimeType: "application/vnd.google-apps.folder" })
+        })
+          .then(function(resp){ if (!resp.ok) throw new Error("Folder create failed ("+resp.status+")"); return resp.json(); })
+          .then(function(folder){ gdriveFolderIdCache = folder.id; return gdriveFolderIdCache; });
+      });
+  }
+
   // ---------- Find (or create-on-first-upload) our backup file's Drive ID ----------
   function gdriveFindFileId(){
     if (gdriveFileIdCache) return Promise.resolve(gdriveFileIdCache);
-    var url = "https://www.googleapis.com/drive/v3/files"
-      + "?q="+encodeURIComponent("name = '"+GDRIVE_FILENAME+"' and trashed = false")
-      + "&fields="+encodeURIComponent("files(id,modifiedTime)")
-      + "&orderBy=modifiedTime desc&pageSize=1";
-    return fetch(url, { headers:{ "Authorization":"Bearer "+gdriveAuth.accessToken } })
-      .then(function(resp){ if (!resp.ok) throw new Error("List failed ("+resp.status+")"); return resp.json(); })
-      .then(function(data){
-        if (data.files && data.files.length){ gdriveFileIdCache = data.files[0].id; return gdriveFileIdCache; }
-        return "";
-      });
+    return gdriveFindOrCreateFolderId().then(function(folderId){
+      var url = "https://www.googleapis.com/drive/v3/files"
+        + "?q="+encodeURIComponent("name = '"+GDRIVE_FILENAME+"' and '"+folderId+"' in parents and trashed = false")
+        + "&fields="+encodeURIComponent("files(id,modifiedTime)")
+        + "&orderBy=modifiedTime desc&pageSize=1";
+      return fetch(url, { headers:{ "Authorization":"Bearer "+gdriveAuth.accessToken } })
+        .then(function(resp){ if (!resp.ok) throw new Error("List failed ("+resp.status+")"); return resp.json(); })
+        .then(function(data){
+          if (data.files && data.files.length){ gdriveFileIdCache = data.files[0].id; return gdriveFileIdCache; }
+          return "";
+        });
+    });
   }
 
   // ---------- Upload: same backup object as manual download ----------
@@ -5626,7 +5649,7 @@ window.addEventListener("unhandledrejection", function(e){
     return gdriveFindFileId().then(function(existingId){
       var boundary = "-------314159265358979323846"; // Same boundary Google's own Drive API v3 docs use in their multipart upload examples.
       var delimiter = "\r\n--"+boundary+"\r\n", closeDelim = "\r\n--"+boundary+"--";
-      var metadata = existingId ? {} : { name: GDRIVE_FILENAME, mimeType:"application/json" }; // Omit name/mimeType on update — Drive keeps the existing file's metadata when patching content-only.
+      var metadata = existingId ? {} : { name: GDRIVE_FILENAME, mimeType:"application/json", parents: gdriveFolderIdCache ? [gdriveFolderIdCache] : undefined }; // Omit name/mimeType/parents on update — Drive keeps the existing file's metadata (including its folder) when patching content-only.
       var multipartBody = delimiter
         + "Content-Type: application/json; charset=UTF-8\r\n\r\n" + JSON.stringify(metadata)
         + delimiter + "Content-Type: application/json\r\n\r\n" + json + closeDelim;
