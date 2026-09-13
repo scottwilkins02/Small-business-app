@@ -54,7 +54,10 @@
   body{-webkit-font-smoothing:antialiased;padding-bottom:calc(70px + var(--tabbar-h) + env(safe-area-inset-bottom));}
   h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;letter-spacing:-0.01em;}
   .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
-  button{font-family:inherit;cursor:pointer;}
+  button{font-family:inherit;cursor:pointer;transition:transform .1s ease, opacity .1s ease;}
+  button:active{transform:scale(0.97);opacity:0.85;}
+  button:disabled:active{transform:none;opacity:1;}
+  .icon{width:1.15em;height:1.15em;display:inline-block;vertical-align:-0.22em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;}
   input,select{font-family:inherit;}
   a{color:var(--blue);}
   :focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
@@ -74,6 +77,7 @@
     flex:none;background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line);
     padding:9px 15px;font-size:13px;font-weight:600;border-radius:var(--radius-full);
     font-family:'Space Grotesk',sans-serif;white-space:nowrap;
+    transition:background-color .15s ease, color .15s ease, border-color .15s ease;
   }
   .tab-btn[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink);}
   .tab-btn .tab-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;}
@@ -85,6 +89,8 @@
   .tab-btn[aria-selected="true"] .tab-dot{background:#fff;}
 
   .sheet[hidden]{display:none;}
+  @keyframes sheetFadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  .sheet:not([hidden]){animation:sheetFadeIn .22s ease-out;}
 
   /* ---------- Header toolbar (backup / export) ---------- */
   .header-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
@@ -108,7 +114,7 @@
     box-shadow:0 10px 28px -8px rgba(15,23,42,0.28), 0 2px 10px rgba(15,23,42,0.09);
     padding:6px 6px;
   }
-  .ios-tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;padding:7px 2px 6px;color:var(--ink-faint);border-radius:var(--radius-full);}
+  .ios-tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;padding:7px 2px 6px;color:var(--ink-faint);border-radius:var(--radius-full);transition:color .15s ease, background-color .15s ease;}
   .ios-tab-icon{font-size:20px;line-height:1;}
   .ios-tab-label{font-size:10px;font-weight:600;letter-spacing:0.01em;}
   .ios-tab-btn[aria-selected="true"]{color:var(--navy);background:var(--navy-soft);}
@@ -467,13 +473,30 @@
   @media (max-width:979px){
     .mobile-bar{display:flex;}
     .summary-panel{display:none;}
-    .summary-panel.expanded{display:block;position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-h) + 70px + env(safe-area-inset-bottom));z-index:46;max-height:70vh;overflow:auto;}
+    .summary-panel.expanded{display:block;position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-h) + 70px + env(safe-area-inset-bottom));z-index:46;max-height:70vh;overflow:auto;animation:sheetSlideUp .22s ease-out;}
   }
-  .sheet-scrim{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.32);z-index:44;}
-  .sheet-scrim.show{display:block;}
+  @keyframes sheetSlideUp{ from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
+  .sheet-scrim{position:fixed;inset:0;background:rgba(15,23,42,0.32);z-index:44;opacity:0;pointer-events:none;transition:opacity .18s ease;}
+  .sheet-scrim.show{opacity:1;pointer-events:auto;}
 </style>
 </head>
 <body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="icon-dashboard" viewBox="0 0 24 24"><path d="M5 19V10M12 19V5M19 19V13"/></symbol>
+  <symbol id="icon-customers" viewBox="0 0 24 24"><path d="M9 11a3 3 0 100-6 3 3 0 000 6zM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M17 11a2.5 2.5 0 100-5M21 20c0-2.5-1.8-4.6-4.2-5.3"/></symbol>
+  <symbol id="icon-quotes" viewBox="0 0 24 24"><path d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V3z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="icon-estimator" viewBox="0 0 24 24"><polygon points="4,20 4,4 20,20"/><path d="M8 20v-2.5M12 20v-4M16 20v-2.5"/></symbol>
+  <symbol id="icon-more" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-templates" viewBox="0 0 24 24"><rect x="7" y="3" width="12" height="15" rx="1.5"/><path d="M5 7v12.5A1.5 1.5 0 006.5 21H16"/></symbol>
+  <symbol id="icon-pricelist" viewBox="0 0 24 24"><path d="M12.6 3H5a2 2 0 00-2 2v7.6a2 2 0 00.6 1.4l8.6 8.6a2 2 0 002.8 0l6.6-6.6a2 2 0 000-2.8L13 3.6a2 2 0 00-.4-.6z"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+  <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 114.2 1.8c-.8.7-1.7 1.1-1.7 2.4"/><circle cx="12" cy="17.1" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2h2"/></symbol>
+  <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 18v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></symbol>
+  <symbol id="icon-doc" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M15 3v5h5"/><path d="M8 12h8M8 16h5"/></symbol>
+  <symbol id="icon-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 01-.5-7.97A5 5 0 0116.9 9.1 4 4 0 0117 18H7z"/></symbol>
+  <symbol id="icon-warning" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v4"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/></symbol>
+</svg>
 
 <noscript>
   <div style="background:#A23B2E;color:#fff;padding:14px 18px;font-family:sans-serif;font-size:14px;">
@@ -500,7 +523,7 @@
     <h1 class="ios-title" id="screenTitle">Dashboard</h1>
     <div class="ios-header-actions">
       <div class="header-toolbar">
-        <button class="toolbar-btn" id="btnCopy" title="Copy the full estimate as text" style="display:none;">📋 Copy summary</button>
+        <button class="toolbar-btn" id="btnCopy" title="Copy the full estimate as text" style="display:none;"><svg class="icon"><use href="#icon-copy"></use></svg> Copy summary</button>
         <span class="save-status" id="saveStatus"></span>
         <button type="button" class="sync-status-pill" id="syncStatusPill" title="Tap to open cloud backup settings"></button>
       </div>
@@ -913,7 +936,7 @@
       <h2 class="panel-title"><span class="panel-eyebrow" style="color:var(--blue);">Data</span>Backup &amp; restore</h2>
       <p style="font-size:13px;color:var(--ink-soft);line-height:1.6;margin:0 0 10px;">Downloads a single file with <b>everything</b> the app stores — customers, quotes, invoices, payments, templates, price list, business settings and your in-progress calculator sheets. Unlike the spreadsheet export below, this file is built to be restored later — a full snapshot, not something to open and read.</p>
       <div id="bak-statusText" style="font-size:12px;color:var(--ink-faint);margin-bottom:10px;"></div>
-      <button class="add-room-btn" id="bak-downloadBtn" style="width:100%;">⬇ Download backup (.json)</button>
+      <button class="add-room-btn" id="bak-downloadBtn" style="width:100%;"><svg class="icon"><use href="#icon-download"></use></svg> Download backup (.json)</button>
       <div id="bak-downloadResults" style="margin-top:12px;"></div>
 
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);">
@@ -961,7 +984,7 @@
     <section class="panel">
       <h2 class="panel-title"><span class="panel-eyebrow">Data</span>Export data</h2>
       <p style="font-size:13px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Downloads one spreadsheet with a tab for Business details, Customers, Quotes &amp; Invoices, Payments, Templates and Price list — everything except the estimator calculator sheets. Opens directly in Excel; in Google Sheets use File → Import → Upload. <span style="color:var(--ink-faint);">(It's a plain-text spreadsheet file saved with an .xls extension rather than Excel's native binary format, so Excel may show a one-time "format doesn't match extension" warning on opening — choose Yes/Open anyway and everything opens normally, tabs and all.)</span></p>
-      <button class="add-room-btn" id="exp-runBtn" style="width:100%;">⬇ Export all data</button>
+      <button class="add-room-btn" id="exp-runBtn" style="width:100%;"><svg class="icon"><use href="#icon-download"></use></svg> Export all data</button>
       <div id="exp-results" style="margin-top:12px;"></div>
     </section>
 
@@ -997,7 +1020,7 @@
 
       <div id="clr-confirmPanel" hidden style="margin-top:14px;padding:14px;background:#FBEBE7;border:1px solid #E3B8AE;border-radius:10px;">
         <p style="font-size:13px;color:var(--red);font-weight:700;margin:0 0 10px;">This permanently deletes everything listed above. This cannot be undone.</p>
-        <button class="toolbar-btn" id="clr-exportFirstBtn" style="background:var(--surface);color:var(--ink);border:1px solid var(--line);margin-bottom:14px;">⬇ Export a backup first</button>
+        <button class="toolbar-btn" id="clr-exportFirstBtn" style="background:var(--surface);color:var(--ink);border:1px solid var(--line);margin-bottom:14px;"><svg class="icon"><use href="#icon-download"></use></svg> Export a backup first</button>
         <p style="font-size:13px;color:var(--ink-soft);margin:0 0 6px;">To confirm, type this code:</p>
         <p class="mono" id="clr-code" style="font-size:22px;font-weight:700;letter-spacing:4px;margin:0 0 10px;color:var(--ink);"></p>
         <input type="text" id="clr-codeInput" inputmode="numeric" placeholder="Enter the 4-digit code" style="width:100%;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:var(--surface-2);font-size:14px;margin-bottom:12px;box-sizing:border-box;">
@@ -1322,21 +1345,21 @@
   <main class="layout" style="grid-template-columns:1fr;max-width:640px;">
     <section class="panel" style="padding:0;overflow:hidden;">
       <div class="ios-list">
-        <button class="ios-list-row" data-tab="templates" type="button"><span class="ios-list-icon">📑</span><span class="ios-list-label">Templates</span><span class="ios-list-chevron">›</span></button>
-        <button class="ios-list-row" data-tab="pricelist" type="button"><span class="ios-list-icon">💷</span><span class="ios-list-label">Price list</span><span class="ios-list-chevron">›</span></button>
-        <button class="ios-list-row" data-tab="settings" type="button"><span class="ios-list-icon">⚙️</span><span class="ios-list-label">Settings &amp; backup</span><span class="ios-list-chevron">›</span></button>
-        <button class="ios-list-row" data-tab="help" type="button"><span class="ios-list-icon">❓</span><span class="ios-list-label">Help</span><span class="ios-list-chevron">›</span></button>
+        <button class="ios-list-row" data-tab="templates" type="button"><span class="ios-list-icon"><svg class="icon"><use href="#icon-templates"></use></svg></span><span class="ios-list-label">Templates</span><span class="ios-list-chevron">›</span></button>
+        <button class="ios-list-row" data-tab="pricelist" type="button"><span class="ios-list-icon"><svg class="icon"><use href="#icon-pricelist"></use></svg></span><span class="ios-list-label">Price list</span><span class="ios-list-chevron">›</span></button>
+        <button class="ios-list-row" data-tab="settings" type="button"><span class="ios-list-icon"><svg class="icon"><use href="#icon-settings"></use></svg></span><span class="ios-list-label">Settings &amp; backup</span><span class="ios-list-chevron">›</span></button>
+        <button class="ios-list-row" data-tab="help" type="button"><span class="ios-list-icon"><svg class="icon"><use href="#icon-help"></use></svg></span><span class="ios-list-label">Help</span><span class="ios-list-chevron">›</span></button>
       </div>
     </section>
   </main>
 </section>
 
 <nav class="ios-tabbar" role="tablist" aria-label="Main navigation">
-  <button class="ios-tab-btn" role="tab" data-bottom="dashboard" data-tab="dashboard" aria-selected="true"><span class="ios-tab-icon">📊</span><span class="ios-tab-label">Dashboard</span></button>
-  <button class="ios-tab-btn" role="tab" data-bottom="customers" data-tab="customers" aria-selected="false"><span class="ios-tab-icon">👥</span><span class="ios-tab-label">Customers</span></button>
-  <button class="ios-tab-btn" role="tab" data-bottom="quotes" data-tab="quotes" aria-selected="false"><span class="ios-tab-icon">🧾</span><span class="ios-tab-label">Quotes</span></button>
-  <button class="ios-tab-btn" role="tab" data-bottom="estimator" data-tab="__estimator__" aria-selected="false"><span class="ios-tab-icon">📐</span><span class="ios-tab-label">Estimator</span></button>
-  <button class="ios-tab-btn" role="tab" data-bottom="more" data-tab="__more__" aria-selected="false"><span class="ios-tab-icon">⋯</span><span class="ios-tab-label">More</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="dashboard" data-tab="dashboard" aria-selected="true"><span class="ios-tab-icon"><svg class="icon"><use href="#icon-dashboard"></use></svg></span><span class="ios-tab-label">Dashboard</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="customers" data-tab="customers" aria-selected="false"><span class="ios-tab-icon"><svg class="icon"><use href="#icon-customers"></use></svg></span><span class="ios-tab-label">Customers</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="quotes" data-tab="quotes" aria-selected="false"><span class="ios-tab-icon"><svg class="icon"><use href="#icon-quotes"></use></svg></span><span class="ios-tab-label">Quotes</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="estimator" data-tab="__estimator__" aria-selected="false"><span class="ios-tab-icon"><svg class="icon"><use href="#icon-estimator"></use></svg></span><span class="ios-tab-label">Estimator</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="more" data-tab="__more__" aria-selected="false"><span class="ios-tab-icon"><svg class="icon"><use href="#icon-more"></use></svg></span><span class="ios-tab-label">More</span></button>
 </nav>
 
 <div class="sheet-scrim" id="sheetScrim"></div>
@@ -4381,7 +4404,7 @@ window.addEventListener("unhandledrejection", function(e){
         '</div>';
 
       overdueEl.innerHTML = overdueRows.length ? overdueRows.map(function(r){
-        return rowHtml("🧾", r.doc, fmtCost(r.balance)+' · '+r.days+'d', "var(--red)");
+        return rowHtml('<svg class="icon"><use href="#icon-quotes"></use></svg>', r.doc, fmtCost(r.balance)+' · '+r.days+'d', "var(--red)");
       }).join("") : '<div class="empty-state">Nothing overdue right now.</div>';
 
       // --- Chart 1: revenue received per month, from payment dates ---
@@ -4426,7 +4449,7 @@ window.addEventListener("unhandledrejection", function(e){
       var recent = docs.slice().sort(function(a,b){ return (b.updatedAt||"").localeCompare(a.updatedAt||""); }).slice(0,8);
       recentEl.innerHTML = recent.length ? recent.map(function(d){
         var t = calcTotals(d);
-        return rowHtml(d.docType==="quote"?"📄":"🧾", d, fmtCost(t.total));
+        return rowHtml(d.docType==="quote" ? '<svg class="icon"><use href="#icon-doc"></use></svg>' : '<svg class="icon"><use href="#icon-quotes"></use></svg>', d, fmtCost(t.total));
       }).join("") : '<div class="empty-state">Nothing yet — create your first quote.</div>';
 
       var openQuotes = quotes.filter(function(d){ return d.status!=="declined" && !d.convertedToInvoiceId; });
@@ -5569,16 +5592,16 @@ window.addEventListener("unhandledrejection", function(e){
 
     if (gdriveNeedsReconnect){
       syncStatusPillEl.className = "sync-status-pill sync-warn";
-      syncStatusPillEl.textContent = "⚠ Google Drive disconnected — tap to reconnect";
+      syncStatusPillEl.innerHTML = '<svg class="icon"><use href="#icon-warning"></use></svg> Google Drive disconnected — tap to reconnect';
     } else if (anyConnected){
       syncStatusPillEl.className = "sync-status-pill sync-ok";
-      syncStatusPillEl.textContent = "☁ Backed up";
+      syncStatusPillEl.innerHTML = '<svg class="icon"><use href="#icon-cloud"></use></svg> Backed up';
     } else if (anyEverConnected){
       // Was connected at some point, currently valid, but we haven't hit
       // either branch above — shouldn't normally happen, but fail toward
       // showing *something* rather than silently hiding a real problem.
       syncStatusPillEl.className = "sync-status-pill sync-ok";
-      syncStatusPillEl.textContent = "☁ Cloud backup set up";
+      syncStatusPillEl.innerHTML = '<svg class="icon"><use href="#icon-cloud"></use></svg> Cloud backup set up';
     } else {
       syncStatusPillEl.className = "sync-status-pill";
       syncStatusPillEl.textContent = "";
