@@ -3188,6 +3188,25 @@ window.addEventListener("unhandledrejection", function(e){
         var card2 = delBtn.closest(".room-card");
         var id = card2.dataset.id;
         if (armedDeletes[id]){
+          var counts = window.__getDocCountsForCustomer ? window.__getDocCountsForCustomer(id) : null;
+          if (counts && counts.total > 0){
+            var custForWarning = customers.filter(function(x){ return x.id===id; })[0];
+            var bits = [];
+            if (counts.quotes) bits.push(counts.quotes+" quote"+(counts.quotes===1?"":"s"));
+            if (counts.invoices) bits.push(counts.invoices+" invoice"+(counts.invoices===1?"":"s"));
+            var proceed = window.confirm(
+              (custForWarning?custForWarning.name:"This customer")+" has "+bits.join(" and ")+". " +
+              "Deleting the customer won't delete these — they'll stay exactly as they are — " +
+              "but you won't be able to look them up by customer afterward. Delete anyway?"
+            );
+            if (!proceed){
+              clearTimeout(armedDeletes[id]);
+              delete armedDeletes[id];
+              delBtn.textContent = "Remove";
+              delBtn.classList.remove("armed");
+              return;
+            }
+          }
           clearTimeout(armedDeletes[id]);
           delete armedDeletes[id];
           var delIdx = customers.findIndex(function(x){ return x.id===id; });
@@ -3360,16 +3379,26 @@ window.addEventListener("unhandledrejection", function(e){
         return String(a.name||"").toLowerCase().localeCompare(String(b.name||"").toLowerCase());
       });
     }
-    function customerOptionsHtml(selectedId, filterText){
+    function customerOptionsHtml(selectedId, filterText, fallbackName){
       var custs = customersSortedBySurname(custMod.getCustomers());
       var q = String(filterText||"").trim().toLowerCase();
       var opts = '<option value="">— select customer —</option>';
+      var selectedFound = false;
       custs.forEach(function(c){
+        if (c.id===selectedId) selectedFound = true;
         var matches = !q || c.name.toLowerCase().indexOf(q) >= 0;
         if (!matches && c.id!==selectedId) return; // keep the current selection visible even if it doesn't match a typed filter
         var label = escapeHtml(c.name) + (c.archived ? " (Archived)" : "");
         opts += '<option value="'+c.id+'" '+(c.id===selectedId?"selected":"")+'>'+label+'</option>';
       });
+      // The customer this document was made for has since been deleted. Keep
+      // showing who it was — from the snapshot saved on the document itself —
+      // instead of silently going blank, which reads as lost information even
+      // though nothing about the document was actually touched.
+      if (selectedId && !selectedFound){
+        var ghostLabel = (fallbackName ? escapeHtml(fallbackName) : "Unknown customer") + " (deleted)";
+        opts += '<option value="'+selectedId+'" selected disabled>'+ghostLabel+'</option>';
+      }
       return opts;
     }
     function lineItemsHtml(doc){
@@ -3431,7 +3460,7 @@ window.addEventListener("unhandledrejection", function(e){
         '<div class="room-card-header"><span class="room-index">'+(doc.docType==="quote"?"Q":"I")+(idx+1)+'</span>' +
         '<div style="flex:1;min-width:0;"><b class="mono">'+doc.number+'</b> '+statusBadgeHtml(doc,totals)+(doc.archived?' <span class="status-badge status-draft">Archived</span>':'')+'</div>' +
         '</div>' +
-        '<div class="customer-picker"><input type="text" data-action="filterCustomers" aria-label="Filter customer list" placeholder="🔍 Filter…"><select data-field="customerId">'+customerOptionsHtml(doc.customerId)+'</select></div>' +
+        '<div class="customer-picker"><input type="text" data-action="filterCustomers" aria-label="Filter customer list" placeholder="🔍 Filter…"><select data-field="customerId">'+customerOptionsHtml(doc.customerId, "", doc.customerSnapshot && doc.customerSnapshot.name)+'</select></div>' +
         '<div class="room-inputs">' +
           '<div class="field-sm"><label>Date</label><input type="date" data-field="date" value="'+(doc.date||"")+'"></div>' +
           '<div class="field-sm"><label>'+dateLabel+'</label><input type="date" data-field="dueDate" value="'+(doc.dueDate||"")+'"></div>' +
@@ -3865,7 +3894,7 @@ window.addEventListener("unhandledrejection", function(e){
       }
       if (t.dataset.action==="filterCustomers"){
         var select = t.closest(".customer-picker").querySelector('select[data-field="customerId"]');
-        select.innerHTML = customerOptionsHtml(select.value, t.value);
+        select.innerHTML = customerOptionsHtml(select.value, t.value, doc.customerSnapshot && doc.customerSnapshot.name);
         return;
       }
       var f = t.dataset.field;
@@ -3991,6 +4020,14 @@ window.addEventListener("unhandledrejection", function(e){
       renderList();
       if (window.__switchToTab) window.__switchToTab("quotes");
       showToast("New quote started for "+(q.customerSnapshot.name||"customer"));
+    };
+    window.__getDocCountsForCustomer = function(customerId){
+      var quotes = 0, invoices = 0;
+      documents.forEach(function(d){
+        if (d.customerId!==customerId) return;
+        if (d.docType==="quote") quotes++; else invoices++;
+      });
+      return { quotes:quotes, invoices:invoices, total:quotes+invoices };
     };
 
     function createQuoteFromTemplate(tpl){
