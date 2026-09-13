@@ -310,10 +310,12 @@
   /* ---------- Print view ---------- */
   #printArea{display:none;}
   @media print{
+    @page{ margin:12mm; }
+    html,body{background:#fff !important;}
     body.printing > *:not(#printArea){display:none !important;}
     body.printing #printArea{display:block !important;}
     #printArea, #printArea *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
-    #printArea{padding:20px;font-family:'Inter',sans-serif;color:#111;}
+    #printArea{background:#fff;padding:20px;font-family:'Inter',sans-serif;color:#111;}
     #printArea .p-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:14px;margin-bottom:16px;gap:20px;}
     #printArea .p-logo{max-height:104px;max-width:280px;object-fit:contain;display:block;margin-bottom:10px;}
     #printArea .p-fromlabel{font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:#999;font-weight:700;margin-bottom:3px;}
