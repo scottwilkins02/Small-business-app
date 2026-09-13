@@ -438,6 +438,8 @@
     .summary-panel{display:none;}
     .summary-panel.expanded{display:block;position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-h) + 70px + env(safe-area-inset-bottom));z-index:46;max-height:70vh;overflow:auto;}
   }
+  .sheet-scrim{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.32);z-index:44;}
+  .sheet-scrim.show{display:block;}
 </style>
 </head>
 <body>
@@ -1306,6 +1308,7 @@
   <button class="ios-tab-btn" role="tab" data-bottom="more" data-tab="__more__" aria-selected="false"><span class="ios-tab-icon">⋯</span><span class="ios-tab-label">More</span></button>
 </nav>
 
+<div class="sheet-scrim" id="sheetScrim"></div>
 <div class="mobile-bar" id="mobileBar">
   <div class="mb-figs">
     <div class="mb-fig"><div class="flabel" id="mbLabel">Boards</div><div class="fval mono" id="mbQty">0</div></div>
@@ -5174,6 +5177,7 @@ window.addEventListener("unhandledrejection", function(e){
 
   function switchToTab(tab){
     if (!sheets[tab]) return;
+    closeBreakdown();
     var bottom = TAB_TO_BOTTOM[tab];
     activeTab = tab;
     activeSection = bottom;
@@ -5213,17 +5217,27 @@ window.addEventListener("unhandledrejection", function(e){
   /* ============ Mobile bottom sheet toggle ============ */
   var SHEET_PANEL_IDS = { boards:"b-summaryPanel", tiles:"t-summaryPanel", plaster:"p-summaryPanel", fencing:"f-summaryPanel", painting:"pt-summaryPanel", customers:"cu-summaryPanel", quotes:"qt-summaryPanel", templates:"tpl-summaryPanel", pricelist:"pl-summaryPanel", dashboard:"dash-summaryPanel" };
   var mbToggle = document.getElementById("mbToggle");
+  var sheetScrimEl = document.getElementById("sheetScrim");
+  function closeBreakdown(){
+    Object.keys(SHEET_PANEL_IDS).forEach(function(k){ document.getElementById(SHEET_PANEL_IDS[k]).classList.remove("expanded"); });
+    mbToggle.textContent = "View breakdown";
+    sheetScrimEl.classList.remove("show");
+  }
   mbToggle.addEventListener("click", function(){
     var panelId = SHEET_PANEL_IDS[activeTab];
     if (!panelId) return;
     var panel = document.getElementById(panelId);
-    var expanded = panel.classList.toggle("expanded");
-    mbToggle.textContent = expanded ? "Hide breakdown" : "View breakdown";
-    // collapse the other panels so only the active one can show
+    var wasExpanded = panel.classList.contains("expanded");
+    if (wasExpanded){ closeBreakdown(); return; }
+    // collapse any other panel so only the active one can show
     Object.keys(SHEET_PANEL_IDS).forEach(function(k){
       if (SHEET_PANEL_IDS[k] !== panel.id) document.getElementById(SHEET_PANEL_IDS[k]).classList.remove("expanded");
     });
+    panel.classList.add("expanded");
+    mbToggle.textContent = "Hide breakdown";
+    sheetScrimEl.classList.add("show");
   });
+  sheetScrimEl.addEventListener("click", closeBreakdown);
 
   switchToTab("dashboard");
   refreshMobileBar();
