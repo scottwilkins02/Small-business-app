@@ -5064,9 +5064,21 @@ window.addEventListener("unhandledrejection", function(e){
   function xmlEscape(s){
     return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
+  function neutralizeFormulaLead(s){
+    // Defends against formula/CSV injection: a cell value that starts with
+    // =, +, -, or @ can get interpreted as a formula by Excel (and other
+    // spreadsheet tools, which are less strict than the SpreadsheetML spec
+    // about respecting ss:Type="String") rather than shown as literal text.
+    // Prefixing with a single quote is the standard mitigation — Excel
+    // treats a leading quote as "this is text," at the cost of that quote
+    // being visible for the rare value that actually starts with one of
+    // these characters (e.g. a customer name someone typed as "-John's").
+    s = String(s==null?"":s);
+    return /^[=+\-@]/.test(s) ? ("'" + s) : s;
+  }
   function ssCell(value, type){
     type = type || (typeof value === "number" ? "Number" : "String");
-    var v = type === "Number" ? (Number(value)||0) : xmlEscape(value);
+    var v = type === "Number" ? (Number(value)||0) : xmlEscape(neutralizeFormulaLead(value));
     return '<Cell><Data ss:Type="'+type+'">'+v+'</Data></Cell>';
   }
   function ssRow(cells){ return '<Row>'+cells.map(function(c){ return ssCell(c.value, c.type); }).join("")+'</Row>'; }
