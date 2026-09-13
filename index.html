@@ -1,33 +1,22 @@
 <!DOCTYPE html>
 <!--
-  Materials Estimator — build 2026-09-06
-  Adds: Google Drive sync (Settings tab), alongside the existing Dropbox
-  sync — same idea, different provider, so users can pick whichever cloud
-  storage they already have. Uses Google Identity Services' token-model
-  flow (initTokenClient), narrow drive.file scope, entirely client-side.
-  Before deploying: search for "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE" in the
-  inline script and replace it with your Google OAuth Client ID, and
-  register your production URL (bare origin, no path) as an Authorized
-  JavaScript origin in Google Cloud Console — plus add each real user's
-  Google account as a Test user under Audience while the app is
-  unverified (100-account cap; see the comment above GDRIVE_CLIENT_ID for
-  the full reasoning, mirroring the Dropbox 50-user note below it).
+  Materials Estimator — build 2026-09-13
+  Google Drive sync (Settings tab) — a redirect + server-side token
+  exchange flow (see /api/gdrive-*.js and the module comment above
+  GDRIVE_CLIENT_ID for the full history of why). Reuses the existing JSON
+  Backup & Restore machinery (buildBackupObject/performRestore/
+  validateBackupObject) verbatim, so a Google Drive sync and a manual
+  backup are always the same file format.
 
-  Previous build (2026-08-26) added: Dropbox sync (Settings tab) — OAuth
-  2.0 PKCE, automatic backup upload after every save, automatic
-  restore-on-boot when a newer backup exists in Dropbox. Both sync
-  modules reuse the existing JSON Backup & Restore machinery
-  (buildBackupObject/performRestore/validateBackupObject) verbatim, so a
-  Dropbox sync, a Google Drive sync, and a manual backup are always the
-  same file format. Before deploying Dropbox: search for
-  "PASTE_YOUR_DROPBOX_APP_KEY_HERE" and replace it with your Dropbox app
-  key, and register your production URL + "?dbxoauth=1" as a redirect URI
-  in the Dropbox App Console. Full reasoning (including what to do if
-  this app ever outgrows a single shared key) is in the comment right
-  above that line.
+  Dropbox sync was removed 2026-09-13 (was here from 2026-08-26 through
+  2026-09-13) at the user's request, once Google Drive sync covered the
+  same need — see project history if reviving cross-device sync via a
+  second provider is ever wanted again; the old module was self-contained
+  and can be referenced from an earlier version of this file.
 -->
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Materials Estimator — Boards, Tiles &amp; Plaster</title>
@@ -432,10 +421,9 @@
 <div id="cloudBackupPromptOverlay" style="display:none;position:fixed;inset:0;background:rgba(32,31,27,0.55);z-index:200;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--surface);border-radius:var(--radius-lg);max-width:420px;width:100%;padding:24px;box-shadow:var(--shadow);">
     <h2 style="font-size:18px;margin-bottom:8px;">Your data isn't backed up yet</h2>
-    <p style="font-size:14px;line-height:1.6;color:var(--ink-soft);margin:0 0 18px;">Everything you enter currently only lives on this device. If it's lost, damaged, or you clear your browser data, there's no copy anywhere else. Connecting Google Drive or Dropbox backs everything up automatically — no more thinking about it after that.</p>
+    <p style="font-size:14px;line-height:1.6;color:var(--ink-soft);margin:0 0 18px;">Everything you enter currently only lives on this device. If it's lost, damaged, or you clear your browser data, there's no copy anywhere else. Connecting Google Drive backs everything up automatically — no more thinking about it after that.</p>
     <div style="display:flex;flex-direction:column;gap:8px;">
       <button id="cloudPromptConnectGdriveBtn" class="toolbar-btn" style="background:var(--ink);color:#fff;border:none;padding:11px;font-size:13.5px;">Connect Google Drive</button>
-      <button id="cloudPromptConnectDbxBtn" class="toolbar-btn" style="background:var(--surface);color:var(--ink);border:1px solid var(--line);padding:11px;font-size:13.5px;">Connect Dropbox</button>
       <button id="cloudPromptDismissBtn" style="background:none;border:none;color:var(--ink-faint);font-size:13px;padding:8px;text-decoration:underline;">Not now</button>
     </div>
   </div>
@@ -887,46 +875,15 @@
       </div>
     </section>
 
-    <section class="panel" style="border-color:#B9C4E6;">
-      <h2 class="panel-title"><span class="panel-eyebrow" style="color:var(--blue);">Data</span>Dropbox sync</h2>
-      <p style="font-size:13px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Connect a Dropbox account once and this device will automatically upload a backup after every change, and pull down the latest backup whenever you open the app — so a quote made on your phone shows up on your iPad without you doing anything. Uses the same backup file as "Backup &amp; restore" above, just sent to Dropbox instead of downloaded. <span style="color:var(--ink-faint);">Connect the same Dropbox account on each device you use.</span></p>
-      <div id="dbx-statusCard" style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span class="status-badge status-draft" id="dbx-statusBadge">Not connected</span>
-          <span style="font-size:13px;color:var(--ink-soft);" id="dbx-statusEmail"></span>
-        </div>
-        <div style="font-size:12px;color:var(--ink-faint);margin-top:8px;" id="dbx-statusDetail">Your data currently only lives on this device (plus any manual backups you've downloaded).</div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="add-room-btn" id="dbx-connectBtn" style="flex:1;">Connect to Dropbox</button>
-        <button class="toolbar-btn" id="dbx-disconnectBtn" style="flex:1;background:var(--surface);color:var(--red);border:1px solid var(--line);display:none;">Disconnect</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <button class="toolbar-btn" id="dbx-syncNowBtn" style="flex:1;background:var(--surface);color:var(--ink);border:1px solid var(--line);display:none;">⟲ Sync now</button>
-      </div>
-      <div id="dbx-results" style="margin-top:10px;"></div>
-      <details class="advanced-toggle" style="margin-top:14px;">
-        <summary>Setup help (for the app owner registering this with Dropbox)</summary>
-        <div class="m-body" style="font-size:12.5px;line-height:1.7;color:var(--ink-soft);margin-top:10px;">
-          <p>Dropbox needs the exact web address this app is running at, registered in the Dropbox App Console under <b>Settings → OAuth 2 → Redirect URIs</b>. Copy this value exactly — a missing or extra character (including the trailing slash) will cause an "Invalid redirect_uri" error when connecting:</p>
-          <div style="display:flex;gap:8px;align-items:center;margin:8px 0;">
-            <code id="dbx-redirectUriDisplay" style="flex:1;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12px;word-break:break-all;">—</code>
-            <button class="toolbar-btn" id="dbx-copyRedirectBtn" style="color:var(--ink);background:var(--surface);border:1px solid var(--line);flex:none;">Copy</button>
-          </div>
-          <p>This value is read directly from the address bar this copy of the app is running at, so it will be different if you move the app to a new domain, and you'd need to add the new value in Dropbox too (the old one can stay registered alongside it — Dropbox allows multiple redirect URIs on one app).</p>
-        </div>
-      </details>
-    </section>
-
     <section class="panel" style="border-color:#B9DCC0;">
       <h2 class="panel-title"><span class="panel-eyebrow" style="color:var(--moss);">Data</span>Google Drive sync</h2>
-      <p style="font-size:13px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Works the same way as Dropbox sync above, but saves to your own Google Drive instead — use whichever cloud storage you already have. The first time you connect, Google shows a one-time "app isn't verified" notice before the permission screen; that's expected for an app this size and only appears once per account. <span style="color:var(--ink-faint);">Connect the same Google account on each device you use. Only one of Dropbox or Google Drive needs to be connected — using both keeps a backup copy in each.</span></p>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Connect a Google account once and this device will automatically upload a backup after every change, and pull down the latest backup whenever you open the app — so a quote made on your phone shows up on your iPad without you doing anything. Uses the same backup file as "Backup &amp; restore" above, just sent to Google Drive instead of downloaded. The first time you connect, Google shows a one-time "app isn't verified" notice before the permission screen; that's expected for an app this size and only appears once per account. <span style="color:var(--ink-faint);">Connect the same Google account on each device you use.</span></p>
       <div id="gdrive-statusCard" style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span class="status-badge status-draft" id="gdrive-statusBadge">Not connected</span>
           <span style="font-size:13px;color:var(--ink-soft);" id="gdrive-statusEmail"></span>
         </div>
-        <div style="font-size:12px;color:var(--ink-faint);margin-top:8px;" id="gdrive-statusDetail">Your data currently only lives on this device (plus any manual backups you've downloaded, or a Dropbox connection above).</div>
+        <div style="font-size:12px;color:var(--ink-faint);margin-top:8px;" id="gdrive-statusDetail">Your data currently only lives on this device (plus any manual backups you've downloaded).</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;">
         <button class="add-room-btn" id="gdrive-connectBtn" style="flex:1;">Connect to Google Drive</button>
@@ -2520,15 +2477,14 @@ window.addEventListener("unhandledrejection", function(e){
   function cloneDoc(o){ return JSON.parse(JSON.stringify(o)); }
 
   var bizSettings = {
-    id:"business", bizName:"", bizAddress:"", bizPhone:"", bizEmail:"", logoDataUrl:"", logoAccentColor:"", lastBackupAt:"", lastDropboxSyncAt:"", lastGoogleDriveSyncAt:"",
+    id:"business", bizName:"", bizAddress:"", bizPhone:"", bizEmail:"", logoDataUrl:"", logoAccentColor:"", lastBackupAt:"", lastGoogleDriveSyncAt:"",
     vatRegistered:false, vatNumber:"", bankDetails:"", defaultVatRate:20,
     nextQuoteNumber:1, nextInvoiceNumber:1, defaultValidDays:30, defaultDueDays:14, defaultTerms:""
   };
-  var dbxSavingSettingsInternally = false; // guards against saveBizSettings→upload→saveBizSettings recursion (see Dropbox module)
-  var gdriveSavingSettingsInternally = false; // same guard, for the Google Drive module below
+  var gdriveSavingSettingsInternally = false; // guards against saveBizSettings→upload→saveBizSettings recursion (see Google Drive module below)
   function saveBizSettings(){
     bizPut("settings", cloneDoc(bizSettings)).catch(function(){ showToast("Couldn't save business details in this viewer"); });
-    if (!dbxSavingSettingsInternally && !gdriveSavingSettingsInternally && window.__syncTriggerUpload) window.__syncTriggerUpload();
+    if (!gdriveSavingSettingsInternally && window.__syncTriggerUpload) window.__syncTriggerUpload();
   }
 
   /* ============ Customers module ============ */
@@ -3918,11 +3874,6 @@ window.addEventListener("unhandledrejection", function(e){
     var settingsRows = results[0]||[], customersRows = results[1]||[], documentsRows = results[2]||[], templatesRows = results[3]||[], priceListRows = results[4]||[];
     var loadedBiz = settingsRows.filter(function(r){ return r.id==="business"; })[0];
     if (loadedBiz){ for (var k in loadedBiz){ if (loadedBiz.hasOwnProperty(k)) bizSettings[k]=loadedBiz[k]; } }
-    var loadedDbxAuth = settingsRows.filter(function(r){ return r.id==="dropboxAuth"; })[0];
-    if (loadedDbxAuth && loadedDbxAuth.accessToken && loadedDbxAuth.expiresAt){
-      dbxAuth.connected = true; dbxAuth.accessToken = loadedDbxAuth.accessToken; dbxAuth.expiresAt = loadedDbxAuth.expiresAt;
-      dbxAuth.accountId = loadedDbxAuth.accountId||""; dbxAuth.email = loadedDbxAuth.email||"";
-    }
     var loadedGdriveAuth = settingsRows.filter(function(r){ return r.id==="gdriveAuth"; })[0];
     if (loadedGdriveAuth && loadedGdriveAuth.wasConnected){
       // Note: we deliberately do NOT restore an access token from storage
@@ -3952,42 +3903,28 @@ window.addEventListener("unhandledrejection", function(e){
     window.__getLogo = custMod.getLogoDataUrl;
     if (isFirstRun) templatesRows.forEach(function(t){ bizPut("templates", cloneDoc(t)).catch(function(){}); });
 
-    // Dropbox: finish an in-progress login (if we were just redirected back
-    // from dropbox.com), then — whether freshly connected or already
-    // connected from a previous session — pull down whichever side (this
-    // device or Dropbox) has the newer data, so opening the app is when
+    // Google Drive: finish an in-progress login (if we were just redirected
+    // back from /api/gdrive-callback), then — whether freshly connected or
+    // already connected from a previous session — pull down whichever side
+    // (this device or Drive) has the newer data, so opening the app is when
     // sync happens rather than requiring a manual step.
     // A restore here reloads the page (same as the manual "Restore from a
     // backup" flow above) because custMod/quotesMod/templatesMod were just
     // built from the pre-restore rows a few lines up — reloading is the
     // simplest way to guarantee every module re-reads the now-current
     // IndexedDB contents rather than silently showing stale in-memory data.
-    // Once-per-boot check: if neither cloud provider has ever been
-    // connected, prompt for it explicitly rather than leaving that only
-    // discoverable via the small header pill — see maybeShowCloudBackupPrompt().
-    // Waits for both providers' boot chains to settle first, so a
-    // just-completed connect (freshly returned from a redirect) is
-    // correctly reflected before deciding whether to show it.
-    var dbxBootChain = dbxHandleOAuthReturn().then(function(){
-      return dbxSyncOnBoot();
-    }).then(function(outcome){
-      if (outcome==="restored"){ window.location.reload(); return; }
-      dbxRenderStatus();
-    }).catch(function(){ dbxRenderStatus(); });
-
-    // Google Drive: finish an in-progress login (if we were just redirected
-    // back from /api/gdrive-callback), then — whether freshly connected or
-    // already connected from a previous session — sync, same pattern as
-    // Dropbox just above (redirect + code exchange, not a popup, since the
-    // 2026-09 rewrite — see the module comment above GDRIVE_CLIENT_ID).
-    var gdriveBootChain = gdriveHandleRedirectReturn().then(function(){
+    // Once-per-boot check: if it's never been connected, prompt for it
+    // explicitly rather than leaving that only discoverable via the small
+    // header pill — see maybeShowCloudBackupPrompt(). Waits for the boot
+    // chain to settle first, so a just-completed connect (freshly returned
+    // from a redirect) is correctly reflected before deciding whether to
+    // show it.
+    gdriveHandleRedirectReturn().then(function(){
       return gdriveSyncOnBoot();
     }).then(function(outcome){
       if (outcome==="restored"){ window.location.reload(); return; }
       gdriveRenderStatus();
-    }).catch(function(){ gdriveRenderStatus(); });
-
-    Promise.all([dbxBootChain, gdriveBootChain]).then(function(){
+    }).catch(function(){ gdriveRenderStatus(); }).then(function(){
       maybeShowCloudBackupPrompt();
     });
   }).catch(function(){
@@ -4411,17 +4348,17 @@ window.addEventListener("unhandledrejection", function(e){
     // extraBizPatch (optional): fields to layer on top of the restored
     // business object — e.g. {lastGoogleDriveSyncAt: "..."} — folded into
     // the SAME write below rather than a separate save afterward. That
-    // "separate save afterward" was a real bug: gdriveSyncOnBoot/
-    // dbxSyncOnBoot used to call saveBizSettings() right after this
-    // function returned, using the *pre-restore* in-memory bizSettings
-    // object (only patched with a timestamp) — which silently overwrote
-    // the business/logo fields this function had just correctly restored,
-    // with this device's own stale values. Customers/documents/etc. were
-    // never affected (nothing touches those stores afterward), which is
-    // exactly why they synced fine while business details/logo silently
-    // didn't. Doing the patch here, in the same write, makes that class of
-    // bug structurally impossible rather than something to remember not to
-    // reintroduce at each call site.
+    // "separate save afterward" was a real bug: gdriveSyncOnBoot used to
+    // call saveBizSettings() right after this function returned, using the
+    // *pre-restore* in-memory bizSettings object (only patched with a
+    // timestamp) — which silently overwrote the business/logo fields this
+    // function had just correctly restored, with this device's own stale
+    // values. Customers/documents/etc. were never affected (nothing
+    // touches those stores afterward), which is exactly why they synced
+    // fine while business details/logo silently didn't. Doing the patch
+    // here, in the same write, makes that class of bug structurally
+    // impossible rather than something to remember not to reintroduce at
+    // each call site.
     return Promise.all([bizClear("customers"), bizClear("documents"), bizClear("templates"), bizClear("priceList")])
       .then(function(){
         var writes = [];
@@ -4433,7 +4370,7 @@ window.addEventListener("unhandledrejection", function(e){
         if (extraBizPatch){ for (var k in extraBizPatch){ if (extraBizPatch.hasOwnProperty(k)) restoredBiz[k] = extraBizPatch[k]; } }
         // Keep the in-memory object consistent with what's now on disk too,
         // in case anything reads bizSettings before the page reload that
-        // always follows a restore from Drive/Dropbox.
+        // always follows a restore from Drive.
         for (var k2 in restoredBiz){ if (restoredBiz.hasOwnProperty(k2)) bizSettings[k2] = restoredBiz[k2]; }
         writes.push(bizPut("settings", restoredBiz));
         return Promise.all(writes);
@@ -4515,400 +4452,7 @@ window.addEventListener("unhandledrejection", function(e){
   }
 
   /* ============================================================
-     Dropbox sync (Settings tab).
-     Solves the real gap in manual backup/restore: moving the JSON file
-     between an iPhone and an iPad is a multi-step, unreliable chore on iOS
-     (Safari's Downloads folder does not reliably show up in Files on a
-     second device). This connects a Dropbox account with OAuth 2.0 +
-     PKCE — no client secret, no backend server, safe to embed in a static
-     HTML file — and then:
-       - uploads the same object buildBackupObject() already produces,
-         debounced, after every meaningful save
-       - on every app boot, downloads whichever is newer — the backup
-         already sitting in Dropbox, or this device's local data — and
-         restores automatically if Dropbox is ahead
-     Conflict handling is deliberately simple (newest exportedAt/savedAt
-     wins) rather than a field-by-field merge — appropriate for a single
-     person moving between their own devices, not a multi-user system.
-     Reuses buildBackupObject() / performRestore() / validateBackupObject()
-     from the JSON Backup & Restore feature above verbatim, so a Dropbox
-     sync and a manual backup are always the exact same file format.
-     ============================================================ */
-  // ---------------------------------------------------------------------
-  // ONE-TIME SETUP — read before deploying.
-  //
-  // Paste your own Dropbox App Key below. It is not a secret (this app
-  // uses the PKCE flow, which has no client secret at all) — it's a public
-  // identifier for THIS APP, same for every user, safe to leave visible in
-  // this file's source. Never paste it into a chat, issue tracker, or
-  // anywhere else it doesn't need to be, simply because there's no reason
-  // to — not because it's sensitive like a password would be.
-  //
-  // SCALING DECISION (revisit only if usage grows — see reasoning below):
-  // A single Dropbox app in "Development" status can link up to 500
-  // Dropbox accounts, but once it passes 50 linked accounts, Dropbox gives
-  // you a two-week window to apply for "Production" status before new
-  // signups are frozen (existing connected users are unaffected either
-  // way). Dropbox will email the account that owns the app when this
-  // happens — that email is the trigger to act, not something to
-  // pre-empt now.
-  //   - If/when that happens and usage looks organic: apply for
-  //     production status in the Dropbox App Console. The review checks
-  //     the app follows Dropbox's branding/terms guidelines, not company
-  //     size — this app only requests a narrow, justified scope (an
-  //     app-specific /Backups folder), so approval should be
-  //     straightforward, though turnaround time isn't something we've
-  //     verified.
-  //   - If/when distribution outgrows one shared app entirely (e.g.
-  //     whitelabelling this for other trades businesses at real scale):
-  //     add a "use your own Dropbox app key" field in the Settings UI
-  //     next to the Connect button, so each deployment/user can supply
-  //     their own key instead of sharing this one. Deliberately NOT
-  //     built yet — it's real UI + storage work in service of a scale
-  //     this app hasn't reached, so it's cheaper to add later with real
-  //     usage data than to build speculatively now.
-  // ---------------------------------------------------------------------
-  var DBX_CLIENT_ID = "PASTE_YOUR_DROPBOX_APP_KEY_HERE"; // ← from Dropbox App Console → Settings → App key
-  var DBX_REDIRECT_PARAM = "dbxoauth"; // Query param marking an OAuth-callback reload of this same page.
-  var DBX_FOLDER = "/Backups";
-  var DBX_TOKEN_SAFETY_MARGIN_MS = 5*60*1000; // Treat a token as expired 5 min early to avoid a request failing mid-flight.
-
-  function dbxSettingsId(){ return "dropboxAuth"; }
-
-  // A single source of truth for the redirect URI, used both when starting
-  // login (dbxConnect) and when exchanging the code for a token
-  // (dbxHandleOAuthReturn) — these two MUST produce a byte-identical string,
-  // since Dropbox checks the value sent at token-exchange against the one
-  // used to start the flow, so this used to be duplicated inline in both
-  // places (a latent bug: editing one without the other would silently
-  // break login). window.location.pathname already includes a leading "/",
-  // so a site served at its domain root (pathname === "/") naturally
-  // produces ".../?dbxoauth=1" and a site served at a specific file
-  // (pathname === "/materials-estimator.html") naturally produces
-  // ".../materials-estimator.html?dbxoauth=1" — no special-casing needed,
-  // this just has to be called the same way every time.
-  function dbxRedirectUri(){
-    return window.location.origin + window.location.pathname + "?"+DBX_REDIRECT_PARAM+"=1";
-  }
-
-  var dbxAuth = { connected:false, accessToken:"", expiresAt:0, accountId:"", email:"" };
-
-  function dbxLoadAuthRecord(){
-    return bizGetAll("settings").then(function(rows){
-      var rec = (rows||[]).filter(function(r){ return r.id===dbxSettingsId(); })[0];
-      if (rec && rec.accessToken && rec.expiresAt){
-        dbxAuth.connected = true;
-        dbxAuth.accessToken = rec.accessToken;
-        dbxAuth.expiresAt = rec.expiresAt;
-        dbxAuth.accountId = rec.accountId||"";
-        dbxAuth.email = rec.email||"";
-      }
-      return dbxAuth;
-    }).catch(function(){ return dbxAuth; });
-  }
-  function dbxSaveAuthRecord(){
-    return bizPut("settings", {
-      id: dbxSettingsId(), accessToken:dbxAuth.accessToken, expiresAt:dbxAuth.expiresAt,
-      accountId:dbxAuth.accountId, email:dbxAuth.email
-    });
-  }
-  function dbxClearAuthRecord(){
-    dbxAuth = { connected:false, accessToken:"", expiresAt:0, accountId:"", email:"" };
-    return bizDelete("settings", dbxSettingsId());
-  }
-  function dbxTokenValid(){
-    return !!(dbxAuth.connected && dbxAuth.accessToken && dbxAuth.expiresAt > (Date.now()+DBX_TOKEN_SAFETY_MARGIN_MS));
-  }
-
-  // ---------- PKCE helpers (Web Crypto — needs HTTPS or localhost) ----------
-  function dbxRandomVerifier(){
-    var allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-    var bytes = new Uint8Array(64);
-    (window.crypto||window.msCrypto).getRandomValues(bytes);
-    var out = "";
-    for (var i=0;i<bytes.length;i++){ out += allowed[bytes[i] % allowed.length]; }
-    return out;
-  }
-  function dbxBase64Url(buf){
-    var bytes = new Uint8Array(buf), bin = "";
-    for (var i=0;i<bytes.length;i++){ bin += String.fromCharCode(bytes[i]); }
-    return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  }
-  function dbxChallengeFromVerifier(verifier){
-    var data = new TextEncoder().encode(verifier);
-    return crypto.subtle.digest("SHA-256", data).then(dbxBase64Url);
-  }
-
-  // ---------- OAuth: start login ----------
-  function dbxConnect(){
-    if (!DBX_CLIENT_ID || DBX_CLIENT_ID === "PASTE_YOUR_DROPBOX_APP_KEY_HERE"){
-      showToast("Dropbox isn't configured for this deployment yet");
-      return;
-    }
-    if (!(window.crypto && window.crypto.subtle)){
-      showToast("Dropbox connect needs HTTPS (or localhost) in this viewer");
-      return;
-    }
-    var verifier = dbxRandomVerifier();
-    try { window.sessionStorage.setItem("dbx_pkce_verifier", verifier); }
-    catch (e){ showToast("This viewer won't let the app store the login in progress — try Safari/Chrome directly"); return; }
-
-    dbxChallengeFromVerifier(verifier).then(function(challenge){
-      var redirectUri = dbxRedirectUri();
-      var url = "https://www.dropbox.com/oauth2/authorize"
-        + "?client_id="+encodeURIComponent(DBX_CLIENT_ID)
-        + "&response_type=code"
-        + "&code_challenge="+encodeURIComponent(challenge)
-        + "&code_challenge_method=S256"
-        + "&token_access_type=online"
-        + "&redirect_uri="+encodeURIComponent(redirectUri);
-      window.location.href = url;
-    }).catch(function(){
-      showToast("Couldn't start the Dropbox login in this viewer");
-    });
-  }
-
-  // ---------- OAuth: finish login (called once on boot if ?dbxoauth=1&code=... is present) ----------
-  function dbxHandleOAuthReturn(){
-    var params = new URLSearchParams(window.location.search);
-    if (params.get(DBX_REDIRECT_PARAM) !== "1") return Promise.resolve(false);
-
-    // Always strip the OAuth params from the URL so a reload/share doesn't
-    // resubmit a used, single-use authorization code.
-    var cleanUrl = window.location.origin + window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-
-    var code = params.get("code");
-    var oauthError = params.get("error_description") || params.get("error");
-    if (oauthError){ showToast("Dropbox: "+oauthError); return Promise.resolve(false); }
-    if (!code) return Promise.resolve(false);
-
-    var verifier;
-    try { verifier = window.sessionStorage.getItem("dbx_pkce_verifier"); }
-    catch (e){ verifier = null; }
-    if (!verifier){ showToast("Dropbox login session expired — please try connecting again"); return Promise.resolve(false); }
-
-    var redirectUri = dbxRedirectUri();
-    return fetch("https://api.dropboxapi.com/oauth2/token", {
-      method:"POST",
-      headers:{ "Content-Type":"application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code: code, grant_type:"authorization_code", client_id:DBX_CLIENT_ID,
-        redirect_uri: redirectUri, code_verifier: verifier
-      }).toString()
-    }).then(function(resp){
-      if (!resp.ok) return resp.json().then(function(e){ throw new Error((e && (e.error_description||e.error))||"Token exchange failed"); });
-      return resp.json();
-    }).then(function(data){
-      try { window.sessionStorage.removeItem("dbx_pkce_verifier"); } catch(e){}
-      dbxAuth.connected = true;
-      dbxAuth.accessToken = data.access_token;
-      dbxAuth.expiresAt = Date.now() + (Number(data.expires_in||14400)*1000);
-      dbxAuth.accountId = data.account_id||"";
-      return dbxFetchAccountEmail().then(function(){
-        return dbxSaveAuthRecord();
-      }).then(function(){
-        showToast("Connected to Dropbox");
-        return true;
-      });
-    }).catch(function(err){
-      showToast("Dropbox connection failed: "+(err&&err.message?err.message:"unknown error"));
-      return false;
-    });
-  }
-
-  function dbxFetchAccountEmail(){
-    return fetch("https://api.dropboxapi.com/2/users/get_current_account", {
-      method:"POST", headers:{ "Authorization":"Bearer "+dbxAuth.accessToken }
-    }).then(function(resp){ return resp.ok ? resp.json() : null; })
-      .then(function(info){ if (info && info.email) dbxAuth.email = info.email; })
-      .catch(function(){ /* non-fatal — just cosmetic */ });
-  }
-
-  function dbxDisconnect(){
-    return dbxClearAuthRecord().then(function(){
-      dbxRenderStatus();
-      showToast("Disconnected from Dropbox");
-    });
-  }
-
-  // ---------- Upload: same backup object as manual download, sent to Dropbox ----------
-  function dbxUploadNow(){
-    if (!dbxTokenValid()) return Promise.resolve(false);
-    if (!custMod || !quotesMod) return Promise.resolve(false);
-    var backup;
-    try { backup = buildBackupObject(); }
-    catch (e){ return Promise.resolve(false); }
-    var json = JSON.stringify(backup);
-    return fetch("https://content.dropboxapi.com/2/files/upload", {
-      method:"POST",
-      headers:{
-        "Authorization":"Bearer "+dbxAuth.accessToken,
-        "Content-Type":"application/octet-stream",
-        "Dropbox-API-Arg": JSON.stringify({ path: DBX_FOLDER+"/latest.json", mode:"overwrite", mute:true })
-      },
-      body: json
-    }).then(function(resp){
-      if (!resp.ok) return resp.json().then(function(e){ throw new Error((e&&e.error_summary)||"Upload failed"); });
-      bizSettings.lastDropboxSyncAt = new Date().toISOString();
-      dbxSavingSettingsInternally = true;
-      try { saveBizSettings(); } finally { dbxSavingSettingsInternally = false; }
-      dbxRenderStatus();
-      return true;
-    }).catch(function(err){
-      console.warn("Dropbox upload failed:", err);
-      return false;
-    });
-  }
-  // Debounced so rapid edits (typing a line item, ticking VAT) don't fire a
-  // network request per keystroke — same reasoning as triggerAutosave above.
-  var dbxTriggerUpload = debounce(function(){ dbxUploadNow(); }, 1500);
-
-  // ---------- Download: fetch Dropbox's copy without restoring it yet ----------
-  function dbxDownloadRemote(){
-    if (!dbxTokenValid()) return Promise.resolve(null);
-    return fetch("https://content.dropboxapi.com/2/files/download", {
-      method:"POST",
-      headers:{
-        "Authorization":"Bearer "+dbxAuth.accessToken,
-        "Dropbox-API-Arg": JSON.stringify({ path: DBX_FOLDER+"/latest.json" })
-      }
-    }).then(function(resp){
-      if (resp.status===409) return null; // path/not_found — nothing uploaded yet
-      if (!resp.ok) throw new Error("Download failed ("+resp.status+")");
-      return resp.json();
-    }).then(function(obj){
-      if (!obj) return null;
-      var errors = validateBackupObject(obj);
-      return errors.length ? null : obj;
-    }).catch(function(err){
-      console.warn("Dropbox download failed:", err);
-      return null;
-    });
-  }
-
-  // ---------- Boot-time sync: whichever side is newer wins ----------
-  function dbxSyncOnBoot(){
-    if (!dbxTokenValid()) return Promise.resolve();
-    return dbxDownloadRemote().then(function(remote){
-      if (!remote){
-        // Nothing in Dropbox yet for this account — seed it from this device.
-        return dbxUploadNow();
-      }
-      var remoteTime = Date.parse(remote.exportedAt||"") || 0;
-      var localTime = Date.parse(bizSettings.lastDropboxSyncAt||"") || 0;
-      // A simple, honest heuristic for one person on two devices: if the
-      // backup sitting in Dropbox is newer than the last time THIS device
-      // pushed or pulled, assume the other device moved ahead and pull it
-      // in. If this device has never synced, always pull (first connect on
-      // a second device should inherit the first device's data).
-      if (!localTime || remoteTime > localTime){
-        return performRestore(remote, { lastDropboxSyncAt: remote.exportedAt || new Date().toISOString() }).then(function(){
-          showToast("Synced latest data from Dropbox");
-          return "restored";
-        });
-      }
-      return null;
-    }).catch(function(err){
-      console.warn("Dropbox boot sync failed:", err);
-    });
-  }
-
-  // ---------- Settings tab UI ----------
-  function dbxRenderStatus(){
-    var badge=document.getElementById("dbx-statusBadge"), emailEl=document.getElementById("dbx-statusEmail"),
-        detail=document.getElementById("dbx-statusDetail"), connectBtn=document.getElementById("dbx-connectBtn"),
-        disconnectBtn=document.getElementById("dbx-disconnectBtn"), syncBtn=document.getElementById("dbx-syncNowBtn");
-    if (!badge) return;
-    // Was: `if (dbxAuth.connected)`, which only reflects whether a token was
-    // ever loaded/set, not whether it's still valid — since this flow
-    // requests token_access_type=online (no refresh token, ~4hr life,
-    // see setup notes above), a token can go stale while dbxAuth.connected
-    // stays true, and this would keep showing "Connected" indefinitely.
-    // Checking dbxTokenValid() (which compares expiresAt) catches that, and
-    // wasConnected (set once on first successful connect, never cleared by
-    // expiry) distinguishes "expired, please reconnect" from "never set up".
-    if (dbxTokenValid()){
-      badge.textContent = "Connected"; badge.className = "status-badge status-accepted";
-      emailEl.textContent = dbxAuth.email||"";
-      var rel = relativeTimeFromNow(bizSettings.lastDropboxSyncAt);
-      detail.textContent = rel ? ("Last synced with Dropbox: "+rel+". Connect the same account on your other device to see this data there.") : "Connected — first sync will run automatically.";
-      connectBtn.style.display = "none";
-      disconnectBtn.style.display = "";
-      syncBtn.style.display = "";
-    } else if (dbxAuth.connected){
-      badge.textContent = "Reconnect needed"; badge.className = "status-badge status-draft";
-      emailEl.textContent = dbxAuth.email||"";
-      detail.textContent = "Your Dropbox sign-in expired (Dropbox access tokens are time-limited). Tap Connect to sign in again and resume syncing.";
-      connectBtn.textContent = "Reconnect to Dropbox"; connectBtn.style.display = "";
-      disconnectBtn.style.display = "";
-      syncBtn.style.display = "none";
-    } else {
-      badge.textContent = "Not connected"; badge.className = "status-badge status-draft";
-      emailEl.textContent = "";
-      detail.textContent = "Your data currently only lives on this device (plus any manual backups you've downloaded).";
-      connectBtn.textContent = "Connect to Dropbox"; connectBtn.style.display = "";
-      disconnectBtn.style.display = "none";
-      syncBtn.style.display = "none";
-    }
-    renderGlobalSyncStatus();
-  }
-  var dbxConnectBtn = document.getElementById("dbx-connectBtn");
-  var dbxDisconnectBtn = document.getElementById("dbx-disconnectBtn");
-  var dbxSyncNowBtn = document.getElementById("dbx-syncNowBtn");
-  if (dbxConnectBtn) dbxConnectBtn.addEventListener("click", dbxConnect);
-  if (dbxDisconnectBtn) dbxDisconnectBtn.addEventListener("click", dbxDisconnect);
-
-  // Shows the exact redirect URI this deployment will send to Dropbox, so
-  // whoever owns the Dropbox app (Scott, or whoever deploys a copy of this
-  // file elsewhere later) can register it without needing to reconstruct it
-  // from window.location by hand — that manual reconstruction is exactly
-  // what caused an "Invalid redirect_uri" mismatch during initial setup.
-  var dbxRedirectDisplay = document.getElementById("dbx-redirectUriDisplay");
-  if (dbxRedirectDisplay) dbxRedirectDisplay.textContent = dbxRedirectUri();
-  var dbxCopyRedirectBtn = document.getElementById("dbx-copyRedirectBtn");
-  if (dbxCopyRedirectBtn){
-    dbxCopyRedirectBtn.addEventListener("click", function(){
-      var text = dbxRedirectUri();
-      var done = function(){ showToast("Copied — paste this into Dropbox's Redirect URIs field"); };
-      if (navigator.clipboard && navigator.clipboard.writeText){
-        navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text); });
-      } else { fallbackCopy(text); }
-    });
-  }
-
-  if (dbxSyncNowBtn) dbxSyncNowBtn.addEventListener("click", function(){
-    if (!custMod || !quotesMod){ showToast("Still loading — try again in a moment"); return; }
-    dbxSyncNowBtn.disabled = true;
-    var results = document.getElementById("dbx-results");
-    dbxSyncOnBoot().then(function(outcome){
-      if (outcome==="restored"){
-        // Same reason as the boot-time restore above: every module in this
-        // session was built from the pre-restore rows, so a reload is the
-        // simplest reliable way to reflect what was just pulled from Dropbox.
-        if (results) results.innerHTML = '<div class="storage-warning" style="background:var(--moss-soft);border-color:#B9CDA6;color:var(--moss);">Pulled newer data from Dropbox — reloading…</div>';
-        setTimeout(function(){ window.location.reload(); }, 700);
-        return;
-      }
-      return dbxUploadNow().then(function(ok){
-        if (results) results.innerHTML = ok
-          ? '<div class="storage-warning" style="background:var(--moss-soft);border-color:#B9CDA6;color:var(--moss);">Uploaded the latest data to Dropbox.</div>'
-          : '<div class="storage-warning">Sync didn\'t complete — check your connection and try again.</div>';
-        dbxRenderStatus();
-        dbxSyncNowBtn.disabled = false;
-      });
-    }).catch(function(){
-      if (results) results.innerHTML = '<div class="storage-warning">Sync didn\'t complete — check your connection and try again.</div>';
-      dbxRenderStatus();
-      dbxSyncNowBtn.disabled = false;
-    });
-  });
-  window.__dbxUploadNow = dbxUploadNow; // immediate, non-debounced — used by the manual "Sync now" button
-
-  /* ============================================================
      Google Drive sync (Settings tab).
-     Alternative to Dropbox sync above, for users who'd rather use a Google
-     account.
 
      REWRITTEN 2026-09 from the original Google Identity Services popup
      ("token model") approach — that version worked in a standalone POC and
@@ -4930,21 +4474,20 @@ window.addEventListener("unhandledrejection", function(e){
      or explicit-revocation limits, not ~hourly). See /api/gdrive-*.js for
      the server side; this module is the client half.
 
-     Deliberately closer to the Dropbox module's shape now than the old
-     version was — both are code+redirect flows — but NOT identical:
-     Dropbox's PKCE exchange happens client-side (no client secret needed,
-     since Dropbox's flow doesn't require one for a public/SPA client);
-     Google's requires a client secret, which is exactly why this one has a
-     server-side piece and Dropbox's doesn't.
+     A Dropbox sync module used to sit alongside this one (added
+     2026-08-26, offering the same cross-device backup via a different
+     provider). Removed 2026-09-13 at the user's request, once Google Drive
+     sync alone covered the need — see project history if reviving a
+     second provider is ever wanted again.
 
      Reuses buildBackupObject() / performRestore() / validateBackupObject()
-     verbatim, same as Dropbox — a Google Drive sync, a Dropbox sync, and a
-     manual backup are all byte-for-byte the same file format.
+     verbatim — a Google Drive sync and a manual backup are always
+     byte-for-byte the same file format.
      ============================================================ */
   var GDRIVE_CLIENT_ID = "922880389356-j2mal1ev5fhseeaaep0elc1ckvko68uj.apps.googleusercontent.com"; // ← from Google Cloud Console → APIs & Services → Credentials → OAuth Client ID. Also set as GOOGLE_CLIENT_ID in Vercel's environment variables — the server side needs its own copy, since /api functions don't read this inline script.
   var GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"; // Non-sensitive scope: only files this app itself creates, not the user's whole Drive — deliberately chosen to avoid Google's heavier verification tiers. Do not broaden this without re-reading why (project history).
-  var GDRIVE_FILENAME = "materials-estimator-backup.json"; // Fixed name, one file, overwritten each sync — mirrors Dropbox's /Backups/latest.json approach rather than Drive's timestamped-per-file pattern from the POC.
-  var GDRIVE_TOKEN_SAFETY_MARGIN_MS = 2*60*1000; // Shorter safety margin than Dropbox's 5 min, since Google's own access token is still short-lived (~1hr) even though reconnecting is now rare — a 5 min margin would discard a meaningfully bigger fraction of its usable life.
+  var GDRIVE_FILENAME = "materials-estimator-backup.json"; // Fixed name, one file, overwritten each sync.
+  var GDRIVE_TOKEN_SAFETY_MARGIN_MS = 2*60*1000; // Google's access token is short-lived (~1hr) even though reconnecting is now rare — a larger margin would discard a meaningfully bigger fraction of its usable life.
 
   function gdriveSettingsId(){ return "gdriveAuth"; }
   function gdriveOrigin(){ return window.location.origin; }
@@ -4988,8 +4531,7 @@ window.addEventListener("unhandledrejection", function(e){
   }
 
   // ---------- Handle the redirect back from /api/gdrive-callback ----------
-  // Mirrors dbxHandleOAuthReturn's shape/position in the boot sequence, but
-  // there is no code to exchange here — the server already did that in
+  // There is no code to exchange here — the server already did that in
   // /api/gdrive-callback.js before redirecting back. This just reads the
   // plain status flag it left in the URL and cleans it up.
   function gdriveHandleRedirectReturn(){
@@ -5066,7 +4608,7 @@ window.addEventListener("unhandledrejection", function(e){
       });
   }
 
-  // ---------- Upload: same backup object as manual download and Dropbox sync ----------
+  // ---------- Upload: same backup object as manual download ----------
   function gdriveUploadNow(){
     if (!gdriveTokenValid()) return Promise.resolve(false);
     if (!custMod || !quotesMod) return Promise.resolve(false);
@@ -5105,7 +4647,7 @@ window.addEventListener("unhandledrejection", function(e){
       return false;
     });
   }
-  var gdriveTriggerUpload = debounce(function(){ gdriveUploadNow(); }, 1500); // Same 1.5s debounce as Dropbox — rapid edits coalesce into one upload.
+  var gdriveTriggerUpload = debounce(function(){ gdriveUploadNow(); }, 1500); // Rapid edits coalesce into one upload.
 
   // ---------- Download: fetch Drive's copy without restoring it yet ----------
   function gdriveDownloadRemote(){
@@ -5172,7 +4714,7 @@ window.addEventListener("unhandledrejection", function(e){
     } else {
       badge.textContent = "Not connected"; badge.className = "status-badge status-draft";
       emailEl.textContent = "";
-      detail.textContent = "Your data currently only lives on this device (plus any manual backups you've downloaded, or a Dropbox connection above).";
+      detail.textContent = "Your data currently only lives on this device (plus any manual backups you've downloaded).";
       connectBtn.textContent = "Connect to Google Drive"; connectBtn.style.display = "";
       disconnectBtn.style.display = "none"; syncBtn.style.display = "none";
     }
@@ -5232,37 +4774,32 @@ window.addEventListener("unhandledrejection", function(e){
      site again. Debounced per-provider (each provider's own trigger
      function decides its own debounce window), not debounced again here. */
   window.__syncTriggerUpload = function(){
-    if (typeof dbxTriggerUpload === "function") dbxTriggerUpload();
     if (typeof gdriveTriggerUpload === "function") gdriveTriggerUpload();
   };
 
   /* ============================================================
      Global sync-status pill (header toolbar).
-     Problem this solves: each provider's own "Reconnect needed" badge only
-     lives inside its card on the Settings tab, so a dropped connection is
-     invisible unless someone happens to be looking at Settings when it
-     happens — exactly the silent-failure risk that prompted this. This pill
-     sits in the header on every tab and only appears when there's something
-     to say: nothing rendered if no provider has ever been connected, a
-     quiet "Synced" note if everything's healthy, and a hard-to-miss red
-     pill the moment a previously-connected provider needs reconnecting.
-     Both gdriveRenderStatus() and dbxRenderStatus() call this at the end,
-     so it always reflects current state without a separate polling loop.
+     Problem this solves: the "Reconnect needed" badge only lives inside
+     its card on the Settings tab, so a dropped connection is invisible
+     unless someone happens to be looking at Settings when it happens —
+     exactly the silent-failure risk that prompted this. This pill sits in
+     the header on every tab and only appears when there's something to
+     say: nothing rendered if it's never been connected, a quiet "Synced"
+     note if healthy, and a hard-to-miss red pill the moment a
+     previously-connected account needs reconnecting. gdriveRenderStatus()
+     calls this at the end, so it always reflects current state without a
+     separate polling loop.
      ============================================================ */
   var syncStatusPillEl = document.getElementById("syncStatusPill");
   function renderGlobalSyncStatus(){
     if (!syncStatusPillEl) return;
     var gdriveNeedsReconnect = gdriveAuth.wasConnected && !gdriveTokenValid();
-    var dbxNeedsReconnect = dbxAuth.connected && !dbxTokenValid();
-    var anyConnected = gdriveTokenValid() || dbxTokenValid();
-    var anyEverConnected = gdriveAuth.wasConnected || dbxAuth.connected;
+    var anyConnected = gdriveTokenValid();
+    var anyEverConnected = gdriveAuth.wasConnected;
 
-    if (gdriveNeedsReconnect || dbxNeedsReconnect){
-      var names = [];
-      if (gdriveNeedsReconnect) names.push("Google Drive");
-      if (dbxNeedsReconnect) names.push("Dropbox");
+    if (gdriveNeedsReconnect){
       syncStatusPillEl.className = "sync-status-pill sync-warn";
-      syncStatusPillEl.textContent = "⚠ " + names.join(" & ") + " disconnected — tap to reconnect";
+      syncStatusPillEl.textContent = "⚠ Google Drive disconnected — tap to reconnect";
     } else if (anyConnected){
       syncStatusPillEl.className = "sync-status-pill sync-ok";
       syncStatusPillEl.textContent = "☁ Backed up";
@@ -5286,15 +4823,15 @@ window.addEventListener("unhandledrejection", function(e){
      The header pill above is deliberately quiet (small, easy to miss on
      purpose, so it doesn't nag once backup is set up). This is the
      opposite: a full prompt shown once per app session specifically when
-     NEITHER provider has ever been connected, so a new user can't miss
-     that their data currently only exists on this one device. "Not now"
-     dismisses it for this browser tab's session only (sessionStorage) —
-     it reappears next time the app is opened fresh, for as long as no
-     cloud backup has actually been set up, which is the whole point: this
-     is meant to be hard to permanently miss, not a one-time tip.
+     it's never been connected, so a new user can't miss that their data
+     currently only exists on this one device. "Not now" dismisses it for
+     this browser tab's session only (sessionStorage) — it reappears next
+     time the app is opened fresh, for as long as no cloud backup has
+     actually been set up, which is the whole point: this is meant to be
+     hard to permanently miss, not a one-time tip.
      ============================================================ */
   function maybeShowCloudBackupPrompt(){
-    if (gdriveAuth.wasConnected || dbxAuth.connected) return; // at least one provider has been set up before (even if currently needing reconnect — that's the header pill's job to flag, not this)
+    if (gdriveAuth.wasConnected) return; // already set up before (even if currently needing reconnect — that's the header pill's job to flag, not this)
     var dismissedThisSession = false;
     try { dismissedThisSession = sessionStorage.getItem("cloudBackupPromptDismissed") === "1"; } catch(_){}
     if (dismissedThisSession) return;
@@ -5303,17 +4840,11 @@ window.addEventListener("unhandledrejection", function(e){
   }
   var cloudPromptOverlayEl = document.getElementById("cloudBackupPromptOverlay");
   var cloudPromptConnectGdriveBtn = document.getElementById("cloudPromptConnectGdriveBtn");
-  var cloudPromptConnectDbxBtn = document.getElementById("cloudPromptConnectDbxBtn");
   var cloudPromptDismissBtn = document.getElementById("cloudPromptDismissBtn");
   if (cloudPromptConnectGdriveBtn) cloudPromptConnectGdriveBtn.addEventListener("click", function(){
     if (cloudPromptOverlayEl) cloudPromptOverlayEl.style.display = "none";
     switchToTab("settings");
     gdriveConnect(); // full-page redirect — leaves this page, so no need to also set the dismissed flag here
-  });
-  if (cloudPromptConnectDbxBtn) cloudPromptConnectDbxBtn.addEventListener("click", function(){
-    if (cloudPromptOverlayEl) cloudPromptOverlayEl.style.display = "none";
-    switchToTab("settings");
-    dbxConnect();
   });
   if (cloudPromptDismissBtn) cloudPromptDismissBtn.addEventListener("click", function(){
     if (cloudPromptOverlayEl) cloudPromptOverlayEl.style.display = "none";
@@ -5355,14 +4886,6 @@ window.addEventListener("unhandledrejection", function(e){
         if (ok) gdriveArmProactiveReconnect();
         gdriveRenderStatus();
       });
-    }
-    if (dbxAuth.connected && !dbxTokenValid()){
-      // Dropbox's flow has no silent (no-redirect) reconnect option — an
-      // expired Dropbox token can only be renewed by the user explicitly
-      // clicking Reconnect (see dbxRenderStatus fix below). Re-rendering
-      // here just makes sure the header pill reflects that promptly on
-      // return to the tab, rather than waiting for the next save attempt.
-      dbxRenderStatus();
     }
   });
 
