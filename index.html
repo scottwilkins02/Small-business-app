@@ -38,13 +38,14 @@
     --gold:#9C7A1E; --gold-soft:#F1E9D2;
     --indigo:#4A4E9C; --indigo-soft:#E5E5F3;
     --red:#A23B2E;
-    --radius:10px; --radius-lg:16px;
-    --shadow:0 1px 2px rgba(32,31,27,0.06), 0 8px 20px -12px rgba(32,31,27,0.18);
-    font-family:'Inter',system-ui,sans-serif;
+    --radius:10px; --radius-lg:18px; --radius-full:999px;
+    --shadow:0 1px 1px rgba(32,31,27,0.04), 0 6px 16px -10px rgba(32,31,27,0.14);
+    --tabbar-h:58px;
+    font-family:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);}
-  body{-webkit-font-smoothing:antialiased;padding-bottom:96px;}
+  body{-webkit-font-smoothing:antialiased;padding-bottom:calc(70px + var(--tabbar-h) + env(safe-area-inset-bottom));}
   h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;letter-spacing:-0.01em;}
   .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
   button{font-family:inherit;cursor:pointer;}
@@ -52,58 +53,62 @@
   a{color:var(--blue);}
   :focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
 
-  /* ---------- Header ---------- */
-  .topbar{background:linear-gradient(180deg,#23252b 0%,#1a1c21 100%);color:#F2F0EA;border-bottom:3px solid var(--amber);}
-  .topbar-inner{max-width:1180px;margin:0 auto;padding:22px 20px 0;display:flex;align-items:flex-start;gap:14px;}
-  .brand-mark{font-size:26px;line-height:1;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;background:#2A2D34;border:1px solid #3B3E46;color:var(--amber);flex:none;}
-  .topbar h1{font-size:22px;color:#fff;}
-  .topbar .subtitle{margin:4px 0 0;font-size:13.5px;color:#B9B6AC;max-width:60ch;line-height:1.45;}
+  /* ---------- iOS-style large-title header ---------- */
+  .ios-header{background:rgba(253,252,249,0.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30;padding-top:env(safe-area-inset-top);}
+  .ios-header-inner{max-width:1180px;margin:0 auto;padding:12px 20px 10px;display:flex;align-items:center;gap:10px;min-height:34px;}
+  .ios-back-btn{background:none;border:none;color:var(--amber);font-size:15px;font-weight:600;padding:4px 4px 4px 0;flex:none;}
+  .ios-back-btn[hidden]{display:none;}
+  .ios-title{font-size:25px;font-weight:700;letter-spacing:-0.015em;font-family:'Space Grotesk',sans-serif;flex:1;min-width:0;}
+  .ios-header-actions{display:flex;align-items:center;gap:8px;flex:none;}
 
-  /* ---------- Section bar (top-level: Estimator / Business / Help) ---------- */
-  .sectionbar{max-width:1180px;margin:20px auto 0;padding:0 20px;display:flex;gap:8px;}
-  .section-btn{
-    flex:1;background:#2A2D34;color:#B9B6AC;border:1px solid #3B3E46;border-radius:12px;
-    padding:12px 10px;font-size:13.5px;font-weight:700;font-family:'Space Grotesk',sans-serif;
-    display:flex;align-items:center;justify-content:center;gap:8px;
-  }
-  .section-btn .section-icon{font-size:16px;}
-  .section-btn[aria-selected="true"]{background:var(--amber);color:#1a1c21;border-color:var(--amber);}
-
-  /* ---------- Tabs (sub-navigation within a section) ---------- */
-  .tabbar{max-width:1180px;margin:14px auto 0;padding:0 20px;display:flex;gap:6px;overflow-x:auto;}
+  /* ---------- Segmented picker (Estimator sheet chooser) ---------- */
+  .tabbar{max-width:1180px;margin:0 auto 12px;padding:0 20px 2px;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .tabbar[hidden]{display:none;}
   .tab-btn{
-    flex:none;background:#2A2D34;color:#B9B6AC;border:1px solid #3B3E46;border-bottom:none;
-    padding:10px 16px;font-size:13.5px;font-weight:600;border-radius:10px 10px 0 0;
+    flex:none;background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line);
+    padding:9px 15px;font-size:13px;font-weight:600;border-radius:var(--radius-full);
     font-family:'Space Grotesk',sans-serif;white-space:nowrap;
   }
-  .tab-btn[aria-selected="true"]{background:var(--bg);color:var(--ink);border-color:var(--line);}
+  .tab-btn[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink);}
   .tab-btn .tab-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;}
   .tab-btn[data-tab="boards"] .tab-dot{background:var(--blue);}
   .tab-btn[data-tab="tiles"] .tab-dot{background:var(--teal);}
   .tab-btn[data-tab="plaster"] .tab-dot{background:var(--amber);}
   .tab-btn[data-tab="fencing"] .tab-dot{background:var(--moss);}
   .tab-btn[data-tab="painting"] .tab-dot{background:var(--plum);}
-  .tab-btn[data-tab="customers"] .tab-dot{background:var(--clay);}
-  .tab-btn[data-tab="quotes"] .tab-dot{background:var(--inkblue);}
-  .tab-btn[data-tab="templates"] .tab-dot{background:var(--slate);}
-  .tab-btn[data-tab="dashboard"] .tab-dot{background:var(--gold);}
-  .tab-btn[data-tab="dashboard"] .tab-dot{background:var(--gold);}
-  .tab-btn[data-tab="pricelist"] .tab-dot{background:var(--indigo);}
-  .tab-btn[data-tab="settings"] .tab-dot{background:#6B5B3D;}
+  .tab-btn[aria-selected="true"] .tab-dot{background:#fff;}
 
   .sheet[hidden]{display:none;}
 
   /* ---------- Header toolbar (backup / export) ---------- */
-  .header-toolbar{max-width:1180px;margin:14px auto 0;padding:0 20px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
-  .toolbar-btn{background:#2A2D34;color:#E9E7DF;border:1px solid #3B3E46;border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:600;}
-  .toolbar-btn:hover{background:#34373f;}
-  .save-status{font-size:11.5px;color:#8E8A7E;margin-left:2px;}
+  .header-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .toolbar-btn{background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:600;}
+  .toolbar-btn:hover{background:var(--surface);border-color:var(--ink-faint);}
+  .save-status{font-size:11.5px;color:var(--ink-faint);margin-left:2px;}
   .sync-status-pill{display:none;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:999px;cursor:pointer;border:1px solid transparent;background:none;}
   .sync-status-pill.sync-ok{display:inline-flex;color:#8E8A7E;}
   .sync-status-pill.sync-warn{display:inline-flex;color:#A23B2E;background:#FBEAE7;border-color:#EBC9C2;}
   .sync-status-pill:hover{filter:brightness(0.96);}
-  .toolbar-note{max-width:1180px;margin:8px auto 0;padding:0 20px 4px;font-size:11.5px;color:#8E8A7E;line-height:1.5;}
+
+  /* ---------- Bottom iOS tab bar (primary navigation) ---------- */
+  .ios-tabbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
+    background:rgba(253,252,249,0.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+    border-top:1px solid var(--line);padding:6px 4px calc(4px + env(safe-area-inset-bottom));
+  }
+  .ios-tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;padding:5px 2px 3px;color:var(--ink-faint);}
+  .ios-tab-icon{font-size:21px;line-height:1;}
+  .ios-tab-label{font-size:10.5px;font-weight:600;letter-spacing:0.01em;}
+  .ios-tab-btn[aria-selected="true"]{color:var(--amber);}
+
+  /* ---------- "More" grouped list ---------- */
+  .ios-list{display:flex;flex-direction:column;}
+  .ios-list-row{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;border-bottom:1px solid var(--line);padding:14px 18px;font-size:15px;font-weight:500;color:var(--ink);text-align:left;}
+  .ios-list-row:last-child{border-bottom:none;}
+  .ios-list-row:active{background:var(--surface-2);}
+  .ios-list-icon{font-size:19px;flex:none;width:22px;text-align:center;}
+  .ios-list-label{flex:1;}
+  .ios-list-chevron{color:var(--ink-faint);font-size:17px;flex:none;}
 
   .toast{
     position:fixed;left:50%;bottom:100px;transform:translate(-50%,10px);
@@ -393,10 +398,10 @@
     .settings-panel{grid-area:settings;}
     .rooms-section{grid-area:rooms;}
     .summary-panel{grid-area:summary;position:sticky;top:20px;}
-    body{padding-bottom:40px;}
+    body{padding-bottom:calc(var(--tabbar-h) + 20px + env(safe-area-inset-bottom));}
   }
 
-  .mobile-bar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;background:#1a1c21;color:#fff;padding:12px 16px calc(12px + env(safe-area-inset-bottom));align-items:center;justify-content:space-between;box-shadow:0 -6px 20px rgba(0,0,0,0.25);}
+  .mobile-bar{display:none;position:fixed;left:0;right:0;bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom));z-index:45;background:#1a1c21;color:#fff;padding:12px 16px;align-items:center;justify-content:space-between;box-shadow:0 -6px 20px rgba(0,0,0,0.25);}
   .mobile-bar .mb-figs{display:flex;gap:18px;}
   .mobile-bar .mb-fig .flabel{font-size:9.5px;color:#9A9689;text-transform:uppercase;letter-spacing:0.06em;}
   .mobile-bar .mb-fig .fval{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
@@ -404,7 +409,7 @@
   @media (max-width:979px){
     .mobile-bar{display:flex;}
     .summary-panel{display:none;}
-    .summary-panel.expanded{display:block;position:fixed;left:12px;right:12px;bottom:76px;z-index:41;max-height:70vh;overflow:auto;}
+    .summary-panel.expanded{display:block;position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-h) + 62px + env(safe-area-inset-bottom));z-index:46;max-height:70vh;overflow:auto;}
   }
 </style>
 </head>
@@ -429,47 +434,31 @@
   </div>
 </div>
 
-<header class="topbar">
-  <div class="topbar-inner">
-    <span class="brand-mark">▦</span>
-    <div>
-      <h1>Materials Estimator</h1>
-      <p class="subtitle">Room-by-room take-offs for plasterboard, tiles and multi-finish plaster, plus customer records, quotes and invoicing. Boards and tiles use real layout tiling across each surface — not a straight area ÷ unit-area guess.</p>
+<header class="ios-header">
+  <div class="ios-header-inner">
+    <button class="ios-back-btn" id="btnBackToMore" hidden>‹ More</button>
+    <h1 class="ios-title" id="screenTitle">Dashboard</h1>
+    <div class="ios-header-actions">
+      <div class="header-toolbar">
+        <button class="toolbar-btn" id="btnCopy" title="Copy the full estimate as text" style="display:none;">📋 Copy summary</button>
+        <span class="save-status" id="saveStatus"></span>
+        <button type="button" class="sync-status-pill" id="syncStatusPill" title="Tap to open cloud backup settings"></button>
+      </div>
     </div>
   </div>
 
-  <nav class="sectionbar" role="tablist" aria-label="App sections">
-    <button class="section-btn" data-section="estimator" aria-selected="true"><span class="section-icon">📐</span>Estimator</button>
-    <button class="section-btn" data-section="business" aria-selected="false"><span class="section-icon">💼</span>Business</button>
-    <button class="section-btn" data-section="help" aria-selected="false"><span class="section-icon">❓</span>Help</button>
-  </nav>
-
-  <nav class="tabbar" data-section-tabs="estimator" role="tablist" aria-label="Estimator sheets">
+  <nav class="tabbar" data-section-tabs="estimator" role="tablist" aria-label="Estimator sheets" hidden>
     <button class="tab-btn" role="tab" data-tab="boards" aria-selected="true"><span class="tab-dot"></span>Plasterboard</button>
     <button class="tab-btn" role="tab" data-tab="tiles" aria-selected="false"><span class="tab-dot"></span>Tiles</button>
     <button class="tab-btn" role="tab" data-tab="plaster" aria-selected="false"><span class="tab-dot"></span>Multi-finish plaster</button>
     <button class="tab-btn" role="tab" data-tab="fencing" aria-selected="false"><span class="tab-dot"></span>Fencing</button>
     <button class="tab-btn" role="tab" data-tab="painting" aria-selected="false"><span class="tab-dot"></span>Painting</button>
   </nav>
-  <nav class="tabbar" data-section-tabs="business" role="tablist" aria-label="Business sheets" hidden>
-    <button class="tab-btn" role="tab" data-tab="customers" aria-selected="true"><span class="tab-dot"></span>Customers</button>
-    <button class="tab-btn" role="tab" data-tab="quotes" aria-selected="false"><span class="tab-dot"></span>Quotes/Invoices</button>
-    <button class="tab-btn" role="tab" data-tab="templates" aria-selected="false"><span class="tab-dot"></span>Templates</button>
-    <button class="tab-btn" role="tab" data-tab="pricelist" aria-selected="false"><span class="tab-dot"></span>Price list</button>
-    <button class="tab-btn" role="tab" data-tab="dashboard" aria-selected="false"><span class="tab-dot"></span>Dashboard</button>
-    <button class="tab-btn" role="tab" data-tab="settings" aria-selected="false"><span class="tab-dot"></span>Settings</button>
-  </nav>
-
-  <div class="header-toolbar">
-    <button class="toolbar-btn" id="btnCopy" title="Copy the full estimate as text">📋 Copy summary</button>
-    <span class="save-status" id="saveStatus"></span>
-    <button type="button" class="sync-status-pill" id="syncStatusPill" title="Tap to open cloud backup settings"></button>
-  </div>
 </header>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- ================= SHEET 1: PLASTERBOARD ================= -->
-<section class="sheet" id="sheet-boards" data-tab="boards">
+<section class="sheet" id="sheet-boards" data-tab="boards" hidden>
   <main class="layout">
     <section class="panel settings-panel">
       <h2 class="panel-title"><span class="panel-eyebrow">Spec</span>Job settings</h2>
@@ -1082,7 +1071,7 @@
 </section>
 
 <!-- ================= SHEET 9: DASHBOARD ================= -->
-<section class="sheet" id="sheet-dashboard" data-tab="dashboard" hidden>
+<section class="sheet" id="sheet-dashboard" data-tab="dashboard">
   <main class="layout">
     <section class="panel settings-panel">
       <h2 class="panel-title"><span class="panel-eyebrow">Overview</span>Business at a glance</h2>
@@ -1267,6 +1256,28 @@
   </details>
   </div>
 </section>
+
+<!-- ================= MORE (grouped menu for secondary business tools) ================= -->
+<section class="sheet" id="sheet-more" data-tab="more" hidden>
+  <main class="layout" style="grid-template-columns:1fr;max-width:640px;">
+    <section class="panel" style="padding:0;overflow:hidden;">
+      <div class="ios-list">
+        <button class="ios-list-row" data-tab="templates" type="button"><span class="ios-list-icon">📑</span><span class="ios-list-label">Templates</span><span class="ios-list-chevron">›</span></button>
+        <button class="ios-list-row" data-tab="pricelist" type="button"><span class="ios-list-icon">💷</span><span class="ios-list-label">Price list</span><span class="ios-list-chevron">›</span></button>
+        <button class="ios-list-row" data-tab="settings" type="button"><span class="ios-list-icon">⚙️</span><span class="ios-list-label">Settings &amp; backup</span><span class="ios-list-chevron">›</span></button>
+        <button class="ios-list-row" data-tab="help" type="button"><span class="ios-list-icon">❓</span><span class="ios-list-label">Help</span><span class="ios-list-chevron">›</span></button>
+      </div>
+    </section>
+  </main>
+</section>
+
+<nav class="ios-tabbar" role="tablist" aria-label="Main navigation">
+  <button class="ios-tab-btn" role="tab" data-bottom="dashboard" data-tab="dashboard" aria-selected="true"><span class="ios-tab-icon">📊</span><span class="ios-tab-label">Dashboard</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="customers" data-tab="customers" aria-selected="false"><span class="ios-tab-icon">👥</span><span class="ios-tab-label">Customers</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="quotes" data-tab="quotes" aria-selected="false"><span class="ios-tab-icon">🧾</span><span class="ios-tab-label">Quotes</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="estimator" data-tab="__estimator__" aria-selected="false"><span class="ios-tab-icon">📐</span><span class="ios-tab-label">Estimator</span></button>
+  <button class="ios-tab-btn" role="tab" data-bottom="more" data-tab="__more__" aria-selected="false"><span class="ios-tab-icon">⋯</span><span class="ios-tab-label">More</span></button>
+</nav>
 
 <div class="mobile-bar" id="mobileBar">
   <div class="mb-figs">
@@ -5096,61 +5107,77 @@ window.addEventListener("unhandledrejection", function(e){
   if (restored) { showToast("Restored your last session"); }
   realAutosave();
 
-  /* ============ Section & tab switching (two-level nav) ============ */
-  var TAB_SECTIONS = {
+  /* ============ Bottom tab-bar nav ============
+     Business tabs (Dashboard, Customers, Quotes) sit directly on the bottom
+     bar now. Estimator is a tool: its 5 calculator sheets live behind a
+     segmented picker under one bottom-bar slot. Templates/Price list/
+     Settings/Help are secondary and grouped under "More". */
+  var TAB_TO_BOTTOM = {
+    dashboard:"dashboard", customers:"customers", quotes:"quotes",
     boards:"estimator", tiles:"estimator", plaster:"estimator", fencing:"estimator", painting:"estimator",
-    settings:"business", customers:"business", quotes:"business", templates:"business", pricelist:"business", dashboard:"business",
-    help:"help"
+    templates:"more", pricelist:"more", settings:"more", help:"more", more:"more"
   };
-  var SECTION_DEFAULT_TAB = { estimator:"boards", business:"customers", help:"help" };
-  var lastTabInSection = { estimator:"boards", business:"customers", help:"help" };
+  var TAB_TITLES = {
+    dashboard:"Dashboard", customers:"Customers", quotes:"Quotes & Invoices",
+    boards:"Plasterboard", tiles:"Tiles", plaster:"Multi-finish Plaster", fencing:"Fencing", painting:"Painting",
+    templates:"Templates", pricelist:"Price List", settings:"Settings", help:"Help", more:"More"
+  };
+  var lastEstimatorTab = "boards";
 
-  var sectionBtns = Array.prototype.slice.call(document.querySelectorAll(".section-btn"));
-  var sectionTabbars = {
-    estimator: document.querySelector('.tabbar[data-section-tabs="estimator"]'),
-    business: document.querySelector('.tabbar[data-section-tabs="business"]')
-  };
+  var estimatorTabbarEl = document.querySelector('.tabbar[data-section-tabs="estimator"]');
   var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
+  var bottomTabBtns = Array.prototype.slice.call(document.querySelectorAll(".ios-tab-btn"));
+  var moreListBtns = Array.prototype.slice.call(document.querySelectorAll(".ios-list-row"));
   var sheets = {
     boards:document.getElementById("sheet-boards"), tiles:document.getElementById("sheet-tiles"), plaster:document.getElementById("sheet-plaster"),
     fencing:document.getElementById("sheet-fencing"), painting:document.getElementById("sheet-painting"),
     settings:document.getElementById("sheet-settings"),
     customers:document.getElementById("sheet-customers"), quotes:document.getElementById("sheet-quotes"), templates:document.getElementById("sheet-templates"),
     pricelist:document.getElementById("sheet-pricelist"), dashboard:document.getElementById("sheet-dashboard"),
-    help:document.getElementById("sheet-help")
+    help:document.getElementById("sheet-help"), more:document.getElementById("sheet-more")
   };
   var mobileBarEl = document.getElementById("mobileBar");
   var btnCopyEl = document.getElementById("btnCopy");
+  var screenTitleEl = document.getElementById("screenTitle");
+  var btnBackToMoreEl = document.getElementById("btnBackToMore");
 
   function switchToTab(tab){
     if (!sheets[tab]) return;
-    var section = TAB_SECTIONS[tab];
+    var bottom = TAB_TO_BOTTOM[tab];
     activeTab = tab;
-    activeSection = section;
-    lastTabInSection[section] = tab;
+    activeSection = bottom;
+    if (bottom === "estimator") lastEstimatorTab = tab;
 
-    sectionBtns.forEach(function(b){ b.setAttribute("aria-selected", b.dataset.section===section ? "true":"false"); });
-    Object.keys(sectionTabbars).forEach(function(s){ if (sectionTabbars[s]) sectionTabbars[s].hidden = (s!==section); });
+    bottomTabBtns.forEach(function(b){ b.setAttribute("aria-selected", b.dataset.bottom===bottom ? "true":"false"); });
+    if (estimatorTabbarEl) estimatorTabbarEl.hidden = (bottom !== "estimator");
     tabBtns.forEach(function(b){ b.setAttribute("aria-selected", b.dataset.tab===tab ? "true":"false"); });
     Object.keys(sheets).forEach(function(k){ sheets[k].hidden = (k!==activeTab); });
 
-    mobileBarEl.style.display = (tab==="help" || tab==="settings") ? "none" : "";
-    btnCopyEl.style.display = (section==="estimator") ? "" : "none";
+    mobileBarEl.style.display = (tab==="help" || tab==="settings" || tab==="more") ? "none" : "";
+    btnCopyEl.style.display = (bottom==="estimator") ? "" : "none";
+    if (screenTitleEl) screenTitleEl.textContent = TAB_TITLES[tab] || "";
+    if (btnBackToMoreEl) btnBackToMoreEl.hidden = !(bottom==="more" && tab!=="more");
     if (tab==="dashboard" && window.__refreshDashboard) window.__refreshDashboard();
     if (tab==="quotes" && window.__refreshQuotesList) window.__refreshQuotesList();
     refreshMobileBar();
   }
-  function switchToSection(section){
-    switchToTab(lastTabInSection[section] || SECTION_DEFAULT_TAB[section]);
-  }
   window.__switchToTab = switchToTab;
 
-  sectionBtns.forEach(function(btn){
-    btn.addEventListener("click", function(){ switchToSection(btn.dataset.section); });
+  bottomTabBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var t = btn.dataset.tab;
+      if (t === "__estimator__") switchToTab(lastEstimatorTab);
+      else if (t === "__more__") switchToTab("more");
+      else switchToTab(t);
+    });
   });
   tabBtns.forEach(function(btn){
     btn.addEventListener("click", function(){ switchToTab(btn.dataset.tab); });
   });
+  moreListBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){ switchToTab(btn.dataset.tab); });
+  });
+  if (btnBackToMoreEl) btnBackToMoreEl.addEventListener("click", function(){ switchToTab("more"); });
 
   /* ============ Mobile bottom sheet toggle ============ */
   var SHEET_PANEL_IDS = { boards:"b-summaryPanel", tiles:"t-summaryPanel", plaster:"p-summaryPanel", fencing:"f-summaryPanel", painting:"pt-summaryPanel", customers:"cu-summaryPanel", quotes:"qt-summaryPanel", templates:"tpl-summaryPanel", pricelist:"pl-summaryPanel", dashboard:"dash-summaryPanel" };
@@ -5167,6 +5194,7 @@ window.addEventListener("unhandledrejection", function(e){
     });
   });
 
+  switchToTab("dashboard");
   refreshMobileBar();
 })();
 </script>
