@@ -162,10 +162,14 @@
   .field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
   .field .hint{display:block;font-size:11px;color:var(--ink-faint);margin-top:4px;line-height:1.4;}
   .field input[type=number], .field select, .field input[type=text]{
-    width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;
+    width:100%;padding:9px 10px;border:1px solid transparent;border-radius:10px;
     background:var(--surface-2);font-size:14.5px;color:var(--ink);
+    transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;
   }
-  .field input:focus, .field select:focus{background:#fff;}
+  .field input:focus, .field select:focus{
+    background:#fff;border-color:var(--navy);outline:none;
+    box-shadow:0 0 0 3px var(--navy-soft);
+  }
   .custom-size-row{display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
   .custom-size-row.show{display:grid;}
 
@@ -220,11 +224,26 @@
 
   .room-inputs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 12px;margin-bottom:14px;}
   .field-sm label{font-size:11px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;}
-  .field-sm input[type=number]{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);font-size:14px;font-family:'IBM Plex Mono',monospace;}
-  .field-sm input[type=text],.field-sm input[type=date]{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);font-size:14px;font-family:'Inter',sans-serif;}
+  .field-sm input[type=number]{width:100%;padding:8px 9px;border:1px solid transparent;border-radius:9px;background:var(--surface-2);font-size:14px;font-family:'IBM Plex Mono',monospace;transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .field-sm input[type=text],.field-sm input[type=date]{width:100%;padding:8px 9px;border:1px solid transparent;border-radius:9px;background:var(--surface-2);font-size:14px;font-family:'Inter',sans-serif;transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .field-sm input:focus{background:#fff;border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
   .toggles-row{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:16px 20px;align-items:center;margin-top:2px;}
-  .check-field{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink-soft);}
-  .check-field input{width:16px;height:16px;accent-color:var(--blue);flex:none;}
+  .check-field{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+  /* Real iOS-style toggle switch, drawn with a shifting radial-gradient
+     rather than ::before/::after — pseudo-elements on <input> (a "replaced"
+     element) render inconsistently across browsers, so this is the safer
+     cross-browser way to fake a knob. Same <input type=checkbox> underneath,
+     so nothing about how the app reads/writes these values changes. */
+  .check-field input[type=checkbox]{
+    appearance:none;-webkit-appearance:none;flex:none;margin:0;cursor:pointer;
+    width:38px;height:22px;border-radius:999px;background-color:var(--line);
+    background-image:radial-gradient(circle 9px, #fff 9px, transparent 9.5px);
+    background-repeat:no-repeat;background-position:11px center;
+    box-shadow:inset 0 0 0 1px rgba(15,23,42,0.06);
+    transition:background-color .16s ease, background-position .16s ease;
+  }
+  .check-field input[type=checkbox]:checked{background-color:var(--navy);background-position:27px center;}
+  .check-field input[type=checkbox]:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
 
   .room-output{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;border-top:1px solid var(--line);padding-top:14px;}
   @media (max-width:600px){ .room-output{grid-template-columns:1fr;} }
@@ -257,8 +276,9 @@
   .line-items-table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;}
   .line-items-table th{text-align:left;font-size:10px;text-transform:uppercase;color:var(--ink-faint);padding:4px 4px;border-bottom:1px solid var(--line);}
   .line-items-table td{padding:5px 4px;vertical-align:middle;}
-  .line-items-table input[type=text]{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 7px;font-size:13px;background:var(--surface-2);}
-  .line-items-table input[type=number]{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 5px;font-size:13px;background:var(--surface-2);font-family:'IBM Plex Mono',monospace;text-align:right;}
+  .line-items-table input[type=text]{width:100%;border:1px solid transparent;border-radius:8px;padding:6px 7px;font-size:13px;background:var(--surface-2);transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .line-items-table input[type=number]{width:100%;border:1px solid transparent;border-radius:8px;padding:6px 5px;font-size:13px;background:var(--surface-2);font-family:'IBM Plex Mono',monospace;text-align:right;transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .line-items-table input:focus{background:#fff;border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
   .line-items-table .li-total{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;white-space:nowrap;padding-left:8px;}
   .li-remove{background:none;border:none;color:var(--red);font-size:16px;padding:2px 6px;}
   .add-line-btn{background:var(--surface-2);border:1px dashed var(--line);border-radius:7px;padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--ink-soft);width:100%;}
@@ -274,21 +294,27 @@
   .doc-actions button.armed{background:var(--red);color:#fff;border-color:var(--red);}
 
   .payments-list{margin-top:8px;font-size:12.5px;}
+  .payments-list .prow-right{display:flex;align-items:center;gap:8px;}
+  .payment-remove{flex:none;background:none;border:none;color:var(--ink-faint);font-size:13px;line-height:1;padding:3px 4px;border-radius:5px;}
+  .payment-remove:hover{color:var(--red);background:#FBEBE7;}
   .prow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--surface-2);}
   .prow.clickable{cursor:pointer;border-radius:6px;padding:8px 6px;}
   .prow.clickable:hover{background:var(--surface-2);}
   .payments-form{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
-  .payments-form input{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12.5px;background:var(--surface-2);}
+  .payments-form input{border:1px solid transparent;border-radius:8px;padding:6px 8px;font-size:12.5px;background:var(--surface-2);transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .payments-form input:focus{background:#fff;border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
   .payments-form input[data-pf="amount"]{width:90px;font-family:'IBM Plex Mono',monospace;}
   .payments-form input[data-pf="date"]{width:135px;}
   .payments-form button{background:var(--ink);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;}
 
   .customer-picker{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
-  .customer-picker select{flex:1;min-width:160px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:14px;}
-  .customer-picker input[type=text]{flex:1;min-width:120px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:13.5px;}
+  .customer-picker select{flex:1;min-width:160px;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:var(--surface-2);font-size:14px;transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .customer-picker input[type=text]{flex:1;min-width:120px;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:var(--surface-2);font-size:13.5px;transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .customer-picker select:focus, .customer-picker input:focus{background:#fff;border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
   .search-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-  .search-row input[type=text]{flex:2;min-width:180px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:13.5px;}
-  .search-row select{flex:1;min-width:170px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:13px;}
+  .search-row input[type=text]{flex:2;min-width:180px;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:var(--surface-2);font-size:13.5px;transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .search-row select{flex:1;min-width:170px;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:var(--surface-2);font-size:13px;transition:border-color .12s ease, background .12s ease, box-shadow .12s ease;}
+  .search-row input:focus, .search-row select:focus{background:#fff;border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
 
   .empty-state{font-size:13px;color:var(--ink-faint);padding:24px;text-align:center;background:var(--surface-2);border-radius:10px;border:1px dashed var(--line);}
 
@@ -974,7 +1000,7 @@
         <button class="toolbar-btn" id="clr-exportFirstBtn" style="background:var(--surface);color:var(--ink);border:1px solid var(--line);margin-bottom:14px;">⬇ Export a backup first</button>
         <p style="font-size:13px;color:var(--ink-soft);margin:0 0 6px;">To confirm, type this code:</p>
         <p class="mono" id="clr-code" style="font-size:22px;font-weight:700;letter-spacing:4px;margin:0 0 10px;color:var(--ink);"></p>
-        <input type="text" id="clr-codeInput" inputmode="numeric" placeholder="Enter the 4-digit code" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:14px;margin-bottom:12px;box-sizing:border-box;">
+        <input type="text" id="clr-codeInput" inputmode="numeric" placeholder="Enter the 4-digit code" style="width:100%;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:var(--surface-2);font-size:14px;margin-bottom:12px;box-sizing:border-box;">
         <div style="display:flex;gap:8px;">
           <button class="toolbar-btn" id="clr-cancelBtn" style="flex:1;background:var(--surface);color:var(--ink);border:1px solid var(--line);padding:10px;">Cancel</button>
           <button class="clear-all-btn armed" id="clr-confirmBtn" disabled style="flex:1;padding:10px;opacity:0.5;">Permanently delete everything</button>
@@ -3428,7 +3454,8 @@ window.addEventListener("unhandledrejection", function(e){
     function paymentsHtml(doc){
       if (doc.docType!=="invoice") return "";
       var list = (doc.payments||[]).map(function(p){
-        return '<div class="prow"><span>'+fmtDate(p.date)+(p.method?" · "+escapeHtml(p.method):"")+'</span><span>'+fmtCost(p.amount)+'</span></div>';
+        return '<div class="prow"><span>'+fmtDate(p.date)+(p.method?" · "+escapeHtml(p.method):"")+'</span>' +
+          '<span class="prow-right"><span>'+fmtCost(p.amount)+'</span><button type="button" class="payment-remove" data-paymentaction="delete" data-paymentid="'+p.id+'" aria-label="Delete payment">✕</button></span></div>';
       }).join("") || '<div class="prow" style="color:var(--ink-faint);">No payments recorded</div>';
       return '<div class="payments-list"><b style="font-size:12px;">Payments</b>'+list+
         '<div class="payments-form">' +
@@ -3466,7 +3493,7 @@ window.addEventListener("unhandledrejection", function(e){
           '<div class="field-sm"><label>'+dateLabel+'</label><input type="date" data-field="dueDate" value="'+(doc.dueDate||"")+'"></div>' +
           '<div class="toggles-row">' +
             '<label class="check-field"><input type="checkbox" data-field="vatEnabled" '+(doc.vatEnabled?"checked":"")+'> Add VAT</label>' +
-            (doc.vatEnabled ? '<label class="check-field" style="gap:6px;">VAT rate<input type="number" data-field="vatRate" value="'+num(doc.vatRate,20)+'" min="0" max="100" step="0.5" style="width:60px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2);font-size:13px;">%</label>' : '') +
+            (doc.vatEnabled ? '<label class="check-field" style="gap:6px;">VAT rate<input type="number" data-field="vatRate" value="'+num(doc.vatRate,20)+'" min="0" max="100" step="0.5" style="width:60px;padding:6px 8px;border:1px solid transparent;border-radius:8px;background:var(--surface-2);font-size:13px;">%</label>' : '') +
           '</div>' +
         '</div>' +
         lineItemsHtml(doc) +
@@ -3942,6 +3969,20 @@ window.addEventListener("unhandledrejection", function(e){
         doc.payments.push({id:genId("pay"), date:date, amount:amount, method:method});
         saveDoc(doc); renderList();
         showToast("Payment recorded");
+        return;
+      }
+      if (e.target.dataset.paymentaction==="delete"){
+        var paymentId = e.target.dataset.paymentid;
+        var pIdx = (doc.payments||[]).findIndex(function(p){ return p.id===paymentId; });
+        var deletedPayment = pIdx>-1 ? doc.payments[pIdx] : null;
+        if (!deletedPayment) return;
+        doc.payments = doc.payments.filter(function(p){ return p.id!==paymentId; });
+        saveDoc(doc); renderList();
+        showUndoToast("Payment of "+fmtCost(deletedPayment.amount)+" deleted", function(){
+          doc.payments = doc.payments||[];
+          doc.payments.splice(Math.min(pIdx, doc.payments.length), 0, deletedPayment);
+          saveDoc(doc); renderList();
+        });
         return;
       }
       if (e.target.dataset.action==="duplicate"){
@@ -5128,7 +5169,7 @@ window.addEventListener("unhandledrejection", function(e){
         '<p style="font-size:13px;color:var(--red);font-weight:700;margin:0 0 10px;">Restoring replaces everything currently in the app with this. This cannot be undone.</p>' +
         '<p style="font-size:13px;color:var(--ink-soft);margin:0 0 6px;">To confirm, type this code:</p>' +
         '<p class="mono" style="font-size:22px;font-weight:700;letter-spacing:4px;margin:0 0 10px;">'+currentRestoreCode+'</p>' +
-        '<input type="text" id="bak-restoreCodeInput" inputmode="numeric" placeholder="Enter the 4-digit code" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:14px;margin-bottom:12px;box-sizing:border-box;">' +
+        '<input type="text" id="bak-restoreCodeInput" inputmode="numeric" placeholder="Enter the 4-digit code" style="width:100%;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:var(--surface-2);font-size:14px;margin-bottom:12px;box-sizing:border-box;">' +
         '<div style="display:flex;gap:8px;">' +
           '<button class="toolbar-btn" id="bak-restoreCancelBtn" style="flex:1;background:var(--surface);color:var(--ink);border:1px solid var(--line);padding:10px;">Cancel</button>' +
           '<button class="clear-all-btn armed" id="bak-restoreConfirmBtn" disabled style="flex:1;padding:10px;opacity:0.5;">Replace everything and restore</button>' +
