@@ -124,10 +124,13 @@
 
   .toast{
     position:fixed;left:50%;bottom:100px;transform:translate(-50%,10px);
-    background:#1a1c21;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;
+    background:#1a1c21;color:#fff;padding:10px 12px 10px 16px;border-radius:8px;font-size:13px;
     box-shadow:var(--shadow);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+    display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);
   }
-  .toast.show{opacity:1;transform:translate(-50%,0);}
+  .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+  .toast-undo{flex:none;background:none;border:none;color:var(--amber, #F5B942);font-weight:700;font-size:13px;padding:4px 4px;}
+  .toast-undo[hidden]{display:none;}
   @media (min-width:980px){ .toast{bottom:24px;} }
 
   /* ---------- Layout ---------- */
@@ -486,7 +489,7 @@
     <button class="tab-btn" role="tab" data-tab="painting" aria-selected="false"><span class="tab-dot"></span>Painting</button>
   </nav>
 </header>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastUndoBtn" class="toast-undo" hidden>Undo</button></div>
 
 <!-- ================= SHEET 1: PLASTERBOARD ================= -->
 <section class="sheet" id="sheet-boards" data-tab="boards" hidden>
@@ -2073,8 +2076,16 @@ window.addEventListener("unhandledrejection", function(e){
     roomsContainer.addEventListener("click", function(e){
       if (e.target.dataset.action==="remove"){
         var card = e.target.closest(".room-card");
+        var delIdx = state.rooms.findIndex(function(r){ return r.id===card.dataset.id; });
+        var deletedRoom = state.rooms[delIdx];
         state.rooms = state.rooms.filter(function(r){ return r.id!==card.dataset.id; });
         renderRooms();
+        if (deletedRoom){
+          showUndoToast((deletedRoom.name||"Room")+" removed", function(){
+            state.rooms.splice(Math.min(delIdx, state.rooms.length), 0, deletedRoom);
+            renderRooms();
+          });
+        }
       }
     });
 
@@ -2256,8 +2267,16 @@ window.addEventListener("unhandledrejection", function(e){
     roomsContainer.addEventListener("click", function(e){
       if (e.target.dataset.action==="remove"){
         var card=e.target.closest(".room-card");
+        var delIdx = rooms.findIndex(function(r){ return r.id===card.dataset.id; });
+        var deletedRoom = rooms[delIdx];
         rooms = rooms.filter(function(r){ return r.id!==card.dataset.id; });
         renderRooms();
+        if (deletedRoom){
+          showUndoToast((deletedRoom.name||"Room")+" removed", function(){
+            rooms.splice(Math.min(delIdx, rooms.length), 0, deletedRoom);
+            renderRooms();
+          });
+        }
       }
     });
 
@@ -2497,8 +2516,16 @@ window.addEventListener("unhandledrejection", function(e){
     roomsContainer.addEventListener("click", function(e){
       if (e.target.dataset.action==="remove"){
         var card=e.target.closest(".room-card");
+        var delIdx = runs.findIndex(function(r){ return r.id===card.dataset.id; });
+        var deletedRun = runs[delIdx];
         runs = runs.filter(function(r){ return r.id!==card.dataset.id; });
         renderRooms();
+        if (deletedRun){
+          showUndoToast((deletedRun.name||"Run")+" removed", function(){
+            runs.splice(Math.min(delIdx, runs.length), 0, deletedRun);
+            renderRooms();
+          });
+        }
       }
     });
 
@@ -2734,8 +2761,16 @@ window.addEventListener("unhandledrejection", function(e){
     roomsContainer.addEventListener("click", function(e){
       if (e.target.dataset.action==="remove"){
         var card=e.target.closest(".room-card");
+        var delIdx = rooms.findIndex(function(r){ return r.id===card.dataset.id; });
+        var deletedRoom = rooms[delIdx];
         rooms = rooms.filter(function(r){ return r.id!==card.dataset.id; });
         renderRooms();
+        if (deletedRoom){
+          showUndoToast((deletedRoom.name||"Room")+" removed", function(){
+            rooms.splice(Math.min(delIdx, rooms.length), 0, deletedRoom);
+            renderRooms();
+          });
+        }
       }
     });
 
@@ -3155,10 +3190,20 @@ window.addEventListener("unhandledrejection", function(e){
         if (armedDeletes[id]){
           clearTimeout(armedDeletes[id]);
           delete armedDeletes[id];
+          var delIdx = customers.findIndex(function(x){ return x.id===id; });
+          var deletedCustomer = customers[delIdx];
           customers = customers.filter(function(x){return x.id!==id;});
           bizDelete("customers", id).catch(function(){});
           if (window.__syncTriggerUpload) window.__syncTriggerUpload();
           renderList();
+          if (deletedCustomer){
+            showUndoToast((deletedCustomer.name||"Customer")+" deleted", function(){
+              customers.splice(Math.min(delIdx, customers.length), 0, deletedCustomer);
+              bizPut("customers", cloneDoc(deletedCustomer)).catch(function(){ showToast("Couldn't restore customer in this viewer"); });
+              if (window.__syncTriggerUpload) window.__syncTriggerUpload();
+              renderList();
+            });
+          }
         } else {
           armedDeletes[id] = setTimeout(function(){ delete armedDeletes[id]; delBtn.textContent="Remove"; delBtn.classList.remove("armed"); }, 3500);
           delBtn.textContent = "Confirm?";
@@ -3917,10 +3962,19 @@ window.addEventListener("unhandledrejection", function(e){
         if (armedDeletes[id]){
           clearTimeout(armedDeletes[id]);
           delete armedDeletes[id];
+          var delIdx = documents.findIndex(function(d){ return d.id===id; });
+          var deletedDoc = documents[delIdx];
           documents = documents.filter(function(d){return d.id!==id;});
           bizDelete("documents", id).catch(function(){});
           if (window.__syncTriggerUpload) window.__syncTriggerUpload();
           renderList();
+          if (deletedDoc){
+            showUndoToast(deletedDoc.number+" deleted", function(){
+              documents.splice(Math.min(delIdx, documents.length), 0, deletedDoc);
+              saveDoc(deletedDoc);
+              renderList();
+            });
+          }
         } else {
           armedDeletes[id] = setTimeout(function(){ delete armedDeletes[id]; e.target.textContent="Delete"; e.target.classList.remove("armed"); }, 3500);
           e.target.textContent = "Confirm?";
@@ -4112,10 +4166,19 @@ window.addEventListener("unhandledrejection", function(e){
         if (armedDeletes[id]){
           clearTimeout(armedDeletes[id]);
           delete armedDeletes[id];
+          var delIdx = templates.findIndex(function(x){ return x.id===id; });
+          var deletedTpl = templates[delIdx];
           templates = templates.filter(function(x){return x.id!==id;});
           bizDelete("templates", id).catch(function(){});
           if (window.__syncTriggerUpload) window.__syncTriggerUpload();
           renderList();
+          if (deletedTpl){
+            showUndoToast((deletedTpl.name||"Template")+" deleted", function(){
+              templates.splice(Math.min(delIdx, templates.length), 0, deletedTpl);
+              saveTemplate(deletedTpl);
+              renderList();
+            });
+          }
         } else {
           armedDeletes[id] = setTimeout(function(){ delete armedDeletes[id]; e.target.textContent="Delete"; e.target.classList.remove("armed"); }, 3500);
           e.target.textContent = "Confirm?";
@@ -4389,10 +4452,19 @@ window.addEventListener("unhandledrejection", function(e){
       if (armedDeletes[id]){
         clearTimeout(armedDeletes[id]);
         delete armedDeletes[id];
+        var delIdx = items.findIndex(function(x){ return x.id===id; });
+        var deletedItem = items[delIdx];
         items = items.filter(function(x){return x.id!==id;});
         bizDelete("priceList", id).catch(function(){});
         if (window.__syncTriggerUpload) window.__syncTriggerUpload();
         renderList();
+        if (deletedItem){
+          showUndoToast((deletedItem.name||"Item")+" deleted", function(){
+            items.splice(Math.min(delIdx, items.length), 0, deletedItem);
+            saveItem(deletedItem);
+            renderList();
+          });
+        }
       } else {
         armedDeletes[id] = setTimeout(function(){ delete armedDeletes[id]; delBtn.textContent="Remove"; delBtn.classList.remove("armed"); }, 3500);
         delBtn.textContent = "Confirm?";
@@ -5602,12 +5674,42 @@ window.addEventListener("unhandledrejection", function(e){
      ============================================================ */
   var STORAGE_KEY = "materials-estimator-v1";
   var toastEl = document.getElementById("toast");
+  var toastMsgEl = document.getElementById("toastMsg");
+  var toastUndoBtn = document.getElementById("toastUndoBtn");
   var toastTimer = null;
+  function hideUndoButton(){
+    toastUndoBtn.hidden = true;
+    toastUndoBtn.onclick = null;
+  }
   function showToast(msg){
-    toastEl.textContent = msg;
+    toastMsgEl.textContent = msg;
+    hideUndoButton();
     toastEl.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 2600);
+  }
+  // Shows a toast with an inline "Undo" action. onUndo is called once, at
+  // most, and only if tapped before the window closes. Used after deletes
+  // across the app — the record is already gone from IndexedDB by the time
+  // this shows; onUndo's job is to put it back, not to cancel a pending write.
+  function showUndoToast(msg, onUndo, durationMs){
+    toastMsgEl.textContent = msg;
+    toastUndoBtn.hidden = false;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    var fired = false;
+    toastUndoBtn.onclick = function(){
+      if (fired) return;
+      fired = true;
+      hideUndoButton();
+      toastEl.classList.remove("show");
+      clearTimeout(toastTimer);
+      onUndo();
+    };
+    toastTimer = setTimeout(function(){
+      toastEl.classList.remove("show");
+      hideUndoButton();
+    }, durationMs || 6000);
   }
 
   function debounce(fn, wait){
