@@ -25,22 +25,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#EDEBE5; --surface:#FFFFFF; --surface-2:#F5F3EE; --line:#D9D4C8;
-    --ink:#201F1B; --ink-soft:#6B6558; --ink-faint:#98917F;
-    --blue:#2547A8; --blue-soft:#E7ECFA;
+    --bg:#F1F3F6; --surface:#FFFFFF; --surface-2:#F5F7FA; --line:#DFE3E9;
+    --ink:#16202E; --ink-soft:#57626F; --ink-faint:#8B95A3;
+    --navy:#1B3A6B; --navy-soft:#E4E9F3;
+    --blue:#2955C2; --blue-soft:#E4EBFB;
     --amber:#B7691A; --amber-soft:#F7E9D6;
     --teal:#1F6E5C; --teal-soft:#DEEFE9;
     --moss:#4B7A34; --moss-soft:#E3EBD9;
     --plum:#7A4F8C; --plum-soft:#EDE3F0;
-    --clay:#8C5A3C; --clay-soft:#EFE4D9;
-    --inkblue:#1E3A5F; --inkblue-soft:#E1E7EE;
-    --slate:#516170; --slate-soft:#E3E7EA;
-    --gold:#9C7A1E; --gold-soft:#F1E9D2;
-    --indigo:#4A4E9C; --indigo-soft:#E5E5F3;
+    /* Business-side sheets (Customers/Quotes/Templates/Dashboard/Price list)
+       all resolve to the one navy identity now, instead of each having its
+       own hue — keeps the professional side of the app visually consistent.
+       The five Estimator materials keep their own colors above; that
+       distinction is genuinely useful for telling calculator sheets apart. */
+    --clay:var(--navy); --clay-soft:var(--navy-soft);
+    --inkblue:var(--navy); --inkblue-soft:var(--navy-soft);
+    --slate:var(--navy); --slate-soft:var(--navy-soft);
+    --gold:var(--navy); --gold-soft:var(--navy-soft);
+    --indigo:var(--navy); --indigo-soft:var(--navy-soft);
     --red:#A23B2E;
     --radius:10px; --radius-lg:18px; --radius-full:999px;
-    --shadow:0 1px 1px rgba(32,31,27,0.04), 0 6px 16px -10px rgba(32,31,27,0.14);
-    --tabbar-h:58px;
+    --shadow:0 1px 2px rgba(15,23,42,0.05), 0 10px 24px -12px rgba(15,23,42,0.16);
+    --tabbar-h:72px;
     font-family:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;
   }
   *{box-sizing:border-box;}
@@ -56,7 +62,7 @@
   /* ---------- iOS-style large-title header ---------- */
   .ios-header{background:rgba(253,252,249,0.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30;padding-top:env(safe-area-inset-top);}
   .ios-header-inner{max-width:1180px;margin:0 auto;padding:12px 20px 10px;display:flex;align-items:center;gap:10px;min-height:34px;}
-  .ios-back-btn{background:none;border:none;color:var(--amber);font-size:15px;font-weight:600;padding:4px 4px 4px 0;flex:none;}
+  .ios-back-btn{background:none;border:none;color:var(--navy);font-size:15px;font-weight:600;padding:4px 4px 4px 0;flex:none;}
   .ios-back-btn[hidden]{display:none;}
   .ios-title{font-size:25px;font-weight:700;letter-spacing:-0.015em;font-family:'Space Grotesk',sans-serif;flex:1;min-width:0;}
   .ios-header-actions{display:flex;align-items:center;gap:8px;flex:none;}
@@ -86,20 +92,26 @@
   .toolbar-btn:hover{background:var(--surface);border-color:var(--ink-faint);}
   .save-status{font-size:11.5px;color:var(--ink-faint);margin-left:2px;}
   .sync-status-pill{display:none;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:999px;cursor:pointer;border:1px solid transparent;background:none;}
-  .sync-status-pill.sync-ok{display:inline-flex;color:#8E8A7E;}
+  .sync-status-pill.sync-ok{display:inline-flex;color:#8B95A3;}
   .sync-status-pill.sync-warn{display:inline-flex;color:#A23B2E;background:#FBEAE7;border-color:#EBC9C2;}
   .sync-status-pill:hover{filter:brightness(0.96);}
 
-  /* ---------- Bottom iOS tab bar (primary navigation) ---------- */
+  /* ---------- Bottom iOS tab bar (primary navigation) ----------
+     Floating inset glass capsule, per current iOS convention — inset from
+     the screen edges rather than flush, with the content scrolling beneath
+     it and a shadow to lift it off the page. */
   .ios-tabbar{
-    position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
-    background:rgba(253,252,249,0.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
-    border-top:1px solid var(--line);padding:6px 4px calc(4px + env(safe-area-inset-bottom));
+    position:fixed;left:14px;right:14px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:50;display:flex;
+    max-width:560px;margin:0 auto;
+    background:rgba(255,255,255,0.82);-webkit-backdrop-filter:blur(24px) saturate(1.4);backdrop-filter:blur(24px) saturate(1.4);
+    border-radius:var(--radius-full);border:1px solid rgba(255,255,255,0.7);
+    box-shadow:0 10px 28px -8px rgba(15,23,42,0.28), 0 2px 10px rgba(15,23,42,0.09);
+    padding:6px 6px;
   }
-  .ios-tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;padding:5px 2px 3px;color:var(--ink-faint);}
-  .ios-tab-icon{font-size:21px;line-height:1;}
-  .ios-tab-label{font-size:10.5px;font-weight:600;letter-spacing:0.01em;}
-  .ios-tab-btn[aria-selected="true"]{color:var(--amber);}
+  .ios-tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;padding:7px 2px 6px;color:var(--ink-faint);border-radius:var(--radius-full);}
+  .ios-tab-icon{font-size:20px;line-height:1;}
+  .ios-tab-label{font-size:10px;font-weight:600;letter-spacing:0.01em;}
+  .ios-tab-btn[aria-selected="true"]{color:var(--navy);background:var(--navy-soft);}
 
   /* ---------- "More" grouped list ---------- */
   .ios-list{display:flex;flex-direction:column;}
@@ -120,7 +132,7 @@
 
   /* ---------- Layout ---------- */
   .layout{max-width:1180px;margin:0 auto;padding:20px 16px 40px;display:grid;grid-template-columns:1fr;gap:20px;}
-  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px 18px 20px;box-shadow:var(--shadow);}
+  .panel{background:var(--surface);border-radius:var(--radius-lg);padding:18px 18px 20px;box-shadow:var(--shadow);}
   .panel-eyebrow{display:block;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600;margin-bottom:2px;font-family:'IBM Plex Mono',monospace;}
   .sheet[data-tab="boards"] .panel-eyebrow{color:var(--blue);}
   .sheet[data-tab="tiles"] .panel-eyebrow{color:var(--teal);}
@@ -133,7 +145,7 @@
   .sheet[data-tab="dashboard"] .panel-eyebrow{color:var(--gold);}
   .sheet[data-tab="dashboard"] .panel-eyebrow{color:var(--gold);}
   .sheet[data-tab="pricelist"] .panel-eyebrow{color:var(--indigo);}
-  .sheet[data-tab="settings"] .panel-eyebrow{color:#6B5B3D;}
+  .sheet[data-tab="settings"] .panel-eyebrow{color:var(--navy);}
   .panel-title{font-size:17px;margin-bottom:14px;}
 
   /* ---------- Locked business-details summary card ---------- */
@@ -180,7 +192,7 @@
   .clear-all-btn:hover{background:#FBEBE7;border-color:#E3B8AE;}
   .clear-all-btn.armed{background:var(--red);color:#fff;border-color:var(--red);}
 
-  .room-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:16px 16px 18px;margin-bottom:14px;box-shadow:var(--shadow);}
+  .room-card{background:var(--surface);border-radius:var(--radius-lg);padding:16px 16px 18px;margin-bottom:14px;box-shadow:var(--shadow);}
   .room-card.archived{opacity:0.72;}
   .room-card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
   .room-index{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;border-radius:6px;padding:4px 8px;flex:none;}
@@ -226,7 +238,7 @@
 
   /* ---------- Customers / Quotes ---------- */
   .status-badge{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:3px 8px;border-radius:20px;}
-  .status-draft{background:#EDEBE5;color:var(--ink-soft);}
+  .status-draft{background:#E9ECF1;color:var(--ink-soft);}
   .status-sent{background:var(--blue-soft);color:var(--blue);}
   .status-accepted{background:var(--moss-soft);color:var(--moss);}
   .status-declined{background:#FBEBE7;color:var(--red);}
@@ -342,10 +354,19 @@
   .figure.full{grid-column:1/-1;border-top:1px dashed var(--line);margin-top:4px;padding-top:8px;}
 
   /* ---------- Summary panel ---------- */
-  .summary-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow);}
+  .summary-panel{background:var(--surface);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow);}
   .summary-panel h2{font-size:16px;margin-bottom:2px;}
   .summary-sub{font-size:11.5px;color:var(--ink-faint);margin-bottom:14px;}
   .summary-totals{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:16px;}
+  /* ---------- Dashboard hero metric + secondary row ---------- */
+  #dash-headline{display:block;}
+  .dash-hero{background:var(--navy);color:#fff;border-radius:var(--radius-lg);padding:20px 22px;margin-bottom:10px;box-shadow:var(--shadow);}
+  .dash-hero .flabel{font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.7);font-weight:600;}
+  .dash-hero .fval{font-size:32px;font-weight:700;margin-top:4px;letter-spacing:-0.01em;}
+  .dash-secondary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .dash-secondary .stotal{background:var(--surface-2);border-radius:12px;padding:10px 10px;}
+  .dash-secondary .stotal .fval{font-size:15px;}
+  .dash-secondary .stotal.dash-hot{background:#FBEBE7;}
   .stotal .flabel{font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);font-weight:600;}
   .stotal .fval{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;margin-top:2px;}
   .stotal.headline{grid-column:1/-1;background:var(--blue-soft);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;}
@@ -401,15 +422,21 @@
     body{padding-bottom:calc(var(--tabbar-h) + 20px + env(safe-area-inset-bottom));}
   }
 
-  .mobile-bar{display:none;position:fixed;left:0;right:0;bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom));z-index:45;background:#1a1c21;color:#fff;padding:12px 16px;align-items:center;justify-content:space-between;box-shadow:0 -6px 20px rgba(0,0,0,0.25);}
+  .mobile-bar{
+    display:none;position:fixed;left:14px;right:14px;bottom:calc(var(--tabbar-h) + 8px + env(safe-area-inset-bottom));
+    z-index:45;max-width:560px;margin:0 auto;border-radius:16px;
+    background:rgba(22,32,46,0.94);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+    color:#fff;padding:12px 16px;align-items:center;justify-content:space-between;
+    box-shadow:0 10px 24px -10px rgba(15,23,42,0.4);
+  }
   .mobile-bar .mb-figs{display:flex;gap:18px;}
-  .mobile-bar .mb-fig .flabel{font-size:9.5px;color:#9A9689;text-transform:uppercase;letter-spacing:0.06em;}
+  .mobile-bar .mb-fig .flabel{font-size:9.5px;color:#9CA6B3;text-transform:uppercase;letter-spacing:0.06em;}
   .mobile-bar .mb-fig .fval{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
-  .mobile-bar button{background:var(--amber);border:none;color:#1a1c21;font-weight:700;border-radius:8px;padding:9px 14px;font-size:12.5px;}
+  .mobile-bar button{background:var(--navy);border:none;color:#fff;font-weight:700;border-radius:8px;padding:9px 14px;font-size:12.5px;}
   @media (max-width:979px){
     .mobile-bar{display:flex;}
     .summary-panel{display:none;}
-    .summary-panel.expanded{display:block;position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-h) + 62px + env(safe-area-inset-bottom));z-index:46;max-height:70vh;overflow:auto;}
+    .summary-panel.expanded{display:block;position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-h) + 70px + env(safe-area-inset-bottom));z-index:46;max-height:70vh;overflow:auto;}
   }
 </style>
 </head>
@@ -1092,8 +1119,8 @@
         <h3 style="font-size:14px;margin:0 0 2px;">Quotes: created vs won — last 6 months</h3>
         <p style="font-size:11.5px;color:var(--ink-faint);margin:0 0 6px;">Grouped by the month each quote was created; "won" means that quote was ultimately accepted or converted to an invoice, whenever that happened.</p>
         <div style="display:flex;gap:14px;font-size:11px;color:var(--ink-faint);margin-bottom:8px;">
-          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#1E3A5F;margin-right:5px;"></span>Created</span>
-          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#9C7A1E;margin-right:5px;"></span>Won</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#1B3A6B;margin-right:5px;"></span>Created</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#0F8A6B;margin-right:5px;"></span>Won</span>
         </div>
         <div id="dash-quotesChart"></div>
       </div>
@@ -1375,7 +1402,7 @@ window.addEventListener("unhandledrejection", function(e){
       }
     }
     return '<svg viewBox="0 0 '+vbW.toFixed(1)+' '+vbH.toFixed(1)+'" width="100%" height="120" preserveAspectRatio="xMidYMid meet">' +
-      '<rect x="0" y="0" width="'+vbW.toFixed(1)+'" height="'+vbH.toFixed(1)+'" fill="#fff" stroke="#D9D4C8"/>' + rects + '</svg>';
+      '<rect x="0" y="0" width="'+vbW.toFixed(1)+'" height="'+vbH.toFixed(1)+'" fill="#fff" stroke="#DFE3E9"/>' + rects + '</svg>';
   }
 
   var MAX_ROOMS = 10;
@@ -1952,7 +1979,7 @@ window.addEventListener("unhandledrejection", function(e){
         parts += '<rect x="'+(px-2.5).toFixed(1)+'" y="8" width="5" height="44" fill="#4B7A34"/>';
       }
       if (bays===0){
-        parts = '<text x="10" y="35" font-size="11" fill="#98917F">Enter a run length to see the layout</text>';
+        parts = '<text x="10" y="35" font-size="11" fill="#8B95A3">Enter a run length to see the layout</text>';
       }
       var svg = '<svg viewBox="0 0 '+vbW.toFixed(1)+' '+vbH+'" width="100%" height="70" preserveAspectRatio="xMidYMid meet">'+parts+'</svg>';
       var cap = bays>0
@@ -3574,13 +3601,13 @@ window.addEventListener("unhandledrejection", function(e){
       var xLabels = "";
       labels.forEach(function(lab, li){
         var x = padL + li*groupW + groupW/2;
-        xLabels += '<text x="'+x.toFixed(1)+'" y="'+(h-6)+'" font-size="9.5" fill="#98917F" text-anchor="middle" font-family="IBM Plex Mono, monospace">'+escapeHtml(lab)+'</text>';
+        xLabels += '<text x="'+x.toFixed(1)+'" y="'+(h-6)+'" font-size="9.5" fill="#8B95A3" text-anchor="middle" font-family="IBM Plex Mono, monospace">'+escapeHtml(lab)+'</text>';
       });
-      var gridline = '<line x1="'+padL+'" y1="'+padT+'" x2="'+(w-padR)+'" y2="'+padT+'" stroke="#D9D4C8" stroke-width="1" stroke-dasharray="2,2"/>';
-      var baseline = '<line x1="'+padL+'" y1="'+(padT+plotH)+'" x2="'+(w-padR)+'" y2="'+(padT+plotH)+'" stroke="#D9D4C8" stroke-width="1"/>';
+      var gridline = '<line x1="'+padL+'" y1="'+padT+'" x2="'+(w-padR)+'" y2="'+padT+'" stroke="#DFE3E9" stroke-width="1" stroke-dasharray="2,2"/>';
+      var baseline = '<line x1="'+padL+'" y1="'+(padT+plotH)+'" x2="'+(w-padR)+'" y2="'+(padT+plotH)+'" stroke="#DFE3E9" stroke-width="1"/>';
       var axisFmt = opts.axisFormat || fmtCostShort;
-      var maxLabel = '<text x="'+(padL-6)+'" y="'+(padT+4)+'" font-size="9" fill="#98917F" text-anchor="end" font-family="IBM Plex Mono, monospace">'+axisFmt(maxVal)+'</text>';
-      var zeroLabel = '<text x="'+(padL-6)+'" y="'+(padT+plotH+3)+'" font-size="9" fill="#98917F" text-anchor="end" font-family="IBM Plex Mono, monospace">0</text>';
+      var maxLabel = '<text x="'+(padL-6)+'" y="'+(padT+4)+'" font-size="9" fill="#8B95A3" text-anchor="end" font-family="IBM Plex Mono, monospace">'+axisFmt(maxVal)+'</text>';
+      var zeroLabel = '<text x="'+(padL-6)+'" y="'+(padT+plotH+3)+'" font-size="9" fill="#8B95A3" text-anchor="end" font-family="IBM Plex Mono, monospace">0</text>';
       return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'" preserveAspectRatio="xMidYMid meet">'+gridline+baseline+bars+xLabels+maxLabel+zeroLabel+'</svg>';
     }
     // Integer-only y-axis variant for count-based charts (quotes created/won),
@@ -3625,11 +3652,14 @@ window.addEventListener("unhandledrejection", function(e){
       });
       overdueRows.sort(function(a,b){ return b.days-a.days; });
 
+      var overdueHot = overdueAmount > 0.004;
       headlineEl.innerHTML =
-        '<div class="stotal headline"><div><div class="flabel">Outstanding balance</div></div><div class="fval">'+fmtCost(outstanding)+'</div></div>' +
-        '<div class="stotal headline" style="background:#FBEBE7;"><div><div class="flabel">Overdue</div></div><div class="fval" style="color:var(--red);">'+fmtCost(overdueAmount)+'</div></div>' +
-        '<div class="stotal"><div class="flabel">Received this month</div><div class="fval">'+fmtCost(receivedThisMonth)+'</div></div>' +
-        '<div class="stotal"><div class="flabel">Received all time</div><div class="fval">'+fmtCost(receivedAllTime)+'</div></div>';
+        '<div class="dash-hero"><div class="flabel">Outstanding balance</div><div class="fval mono">'+fmtCost(outstanding)+'</div></div>' +
+        '<div class="dash-secondary">' +
+          '<div class="stotal'+(overdueHot?' dash-hot':'')+'"><div class="flabel">Overdue</div><div class="fval mono"'+(overdueHot?' style="color:var(--red);"':'')+'>'+fmtCost(overdueAmount)+'</div></div>' +
+          '<div class="stotal"><div class="flabel">This month</div><div class="fval mono">'+fmtCost(receivedThisMonth)+'</div></div>' +
+          '<div class="stotal"><div class="flabel">All time</div><div class="fval mono">'+fmtCost(receivedAllTime)+'</div></div>' +
+        '</div>';
 
       overdueEl.innerHTML = overdueRows.length ? overdueRows.map(function(r){
         return rowHtml("🧾", r.doc, fmtCost(r.balance)+' · '+r.days+'d', "var(--red)");
@@ -3647,7 +3677,7 @@ window.addEventListener("unhandledrejection", function(e){
       if (revenueChartEl){
         revenueChartEl.innerHTML = barChartSvg(
           months.map(function(m){ return m.label; }),
-          [{ values: months.map(function(m){ return revenueByMonth[m.key]; }), color:"#9C7A1E" }]
+          [{ values: months.map(function(m){ return revenueByMonth[m.key]; }), color:"#1B3A6B" }]
         );
       }
 
@@ -3666,8 +3696,8 @@ window.addEventListener("unhandledrejection", function(e){
         quotesChartEl.innerHTML = barChartSvg(
           months.map(function(m){ return m.label; }),
           [
-            { values: months.map(function(m){ return createdByMonth[m.key]; }), color:"#1E3A5F" },
-            { values: months.map(function(m){ return wonByMonth[m.key]; }), color:"#9C7A1E" }
+            { values: months.map(function(m){ return createdByMonth[m.key]; }), color:"#1B3A6B" },
+            { values: months.map(function(m){ return wonByMonth[m.key]; }), color:"#0F8A6B" }
           ],
           { axisFormat: fmtCountShort }
         );
@@ -3809,10 +3839,11 @@ window.addEventListener("unhandledrejection", function(e){
   /* ============ Mobile summary bar (shared across sheets) ============ */
   var activeTab = "boards";
   var activeSection = "estimator";
-  var lastTotals = { boards:{qty:0,cost:0,label:"Boards"}, tiles:{qty:0,cost:0,label:"Tiles"}, plaster:{qty:0,cost:0,label:"Bags"}, fencing:{qty:0,cost:0,label:"Panels"}, painting:{qty:0,cost:0,label:"Tins"}, customers:{qty:0,cost:0,label:"Customers"}, quotes:{qty:0,cost:0,label:"Outstanding"}, templates:{qty:0,cost:0,label:"Templates"}, pricelist:{qty:0,cost:0,label:"Items"}, dashboard:{qty:0,cost:0,label:"Open quotes"}, help:{qty:0,cost:0,label:"Help"}, settings:{qty:0,cost:0,label:"Settings"} };
+  var lastTotals = { boards:{qty:0,cost:0,label:"Boards"}, tiles:{qty:0,cost:0,label:"Tiles"}, plaster:{qty:0,cost:0,label:"Bags"}, fencing:{qty:0,cost:0,label:"Panels"}, painting:{qty:0,cost:0,label:"Tins"}, customers:{qty:0,cost:0,label:"Customers"}, quotes:{qty:0,cost:0,label:"Outstanding"}, templates:{qty:0,cost:0,label:"Templates"}, pricelist:{qty:0,cost:0,label:"Items"}, dashboard:{qty:0,cost:0,label:"Open quotes"}, help:{qty:0,cost:0,label:"Help"}, settings:{qty:0,cost:0,label:"Settings"}, more:{qty:0,cost:0,label:"More"} };
   var mbLabel=document.getElementById("mbLabel"), mbQty=document.getElementById("mbQty"), mbCost=document.getElementById("mbCost");
   function refreshMobileBar(){
     var t = lastTotals[activeTab];
+    if (!t) return;
     mbLabel.textContent = t.label; mbQty.textContent = fmtNum(t.qty); mbCost.textContent = fmtCost(t.cost);
   }
   window.__onSheetTotals = function(key, qty, cost, label){ lastTotals[key] = {qty:qty,cost:cost,label:label}; if (key===activeTab) refreshMobileBar(); };
