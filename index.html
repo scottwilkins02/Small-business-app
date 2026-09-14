@@ -3823,7 +3823,7 @@ window.addEventListener("error", function(e){
           var maxW=54.6, maxH=28.6, ratio=Math.min(maxW/logoInfo.w, maxH/logoInfo.h);
           var lw=logoInfo.w*ratio, lh=logoInfo.h*ratio;
           try { pdf.addImage(logoInfo.dataUrl, imgFormatFromDataUrl(logoInfo.dataUrl), leftX, leftY, lw, lh); } catch(e){}
-          leftY += lh + 4;
+          leftY += lh + 12; // trebled from 4mm — logo was sitting too close to FROM
         }
         pdf.setFont("helvetica","bold"); pdf.setFontSize(7.5); pdf.setTextColor(150,150,150);
         pdf.text("FROM", leftX, leftY); leftY += 4.5;
