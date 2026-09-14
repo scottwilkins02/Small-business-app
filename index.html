@@ -549,6 +549,7 @@
   <symbol id="icon-doc" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M15 3v5h5"/><path d="M8 12h8M8 16h5"/></symbol>
   <symbol id="icon-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 01-.5-7.97A5 5 0 0116.9 9.1 4 4 0 0117 18H7z"/></symbol>
   <symbol id="icon-warning" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v4"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-share" viewBox="0 0 24 24"><path d="M12 3v11"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></symbol>
 </svg>
 
 <noscript>
@@ -567,6 +568,17 @@
       <button id="cloudPromptConnectGdriveBtn" class="toolbar-btn" style="background:var(--ink);color:#fff;border:none;padding:11px;font-size:13.5px;">Connect Google Drive</button>
       <button id="cloudPromptDismissBtn" style="background:none;border:none;color:var(--ink-faint);font-size:13px;padding:8px;text-decoration:underline;">Not now</button>
     </div>
+  </div>
+</div>
+
+<div id="a2hsPrompt" style="display:none;position:fixed;left:16px;right:16px;bottom:calc(var(--tabbar-h) + 16px + env(safe-area-inset-bottom));z-index:150;max-width:520px;margin:0 auto;">
+  <div style="background:var(--ink);color:#fff;border-radius:16px;padding:13px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;">
+    <svg class="icon" style="width:22px;height:22px;flex:none;color:var(--amber, #F5B942);"><use href="#icon-share"></use></svg>
+    <div style="flex:1;font-size:13px;line-height:1.5;">
+      <b>Add Morx to your Home Screen</b><br>
+      Tap Share, then "Add to Home Screen"
+    </div>
+    <button id="a2hsDismissBtn" aria-label="Dismiss" style="background:none;border:none;color:rgba(255,255,255,0.55);font-size:22px;line-height:1;padding:4px;flex:none;">&times;</button>
   </div>
 </div>
 
@@ -4904,6 +4916,7 @@ window.addEventListener("error", function(e){
       gdriveRenderStatus();
     }).catch(function(){ gdriveRenderStatus(); }).then(function(){
       maybeShowCloudBackupPrompt();
+      setTimeout(maybeShowA2HSPrompt, 2200);
     });
   }).catch(function(){
     showBizStorageWarning("Something went wrong loading saved data — starting empty for this session.");
@@ -5869,6 +5882,45 @@ window.addEventListener("error", function(e){
   if (cloudPromptDismissBtn) cloudPromptDismissBtn.addEventListener("click", function(){
     if (cloudPromptOverlayEl) cloudPromptOverlayEl.style.display = "none";
     try { sessionStorage.setItem("cloudBackupPromptDismissed", "1"); } catch(_){}
+    maybeShowA2HSPrompt();
+  });
+
+  /* ============================================================
+     "Add to Home Screen" tip.
+     There's no API on iOS that lets a website trigger this itself — it's a
+     deliberate Apple restriction, not a gap we can code around — so the
+     best available substitute is a one-time instructional banner. Shown
+     only on iOS, only if not already running standalone (i.e. already
+     added), and only once ever per device (localStorage, not per-session —
+     unlike the cloud-backup prompt above, this is a one-time tip rather
+     than an ongoing nag, so it should never come back once dismissed).
+     ============================================================ */
+  function isIOSDevice(){
+    var ua = navigator.userAgent || "";
+    return /iPad|iPhone|iPod/.test(ua) || (ua.indexOf("Macintosh") > -1 && navigator.maxTouchPoints > 1);
+  }
+  function isStandaloneMode(){
+    return window.navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  }
+  function maybeShowA2HSPrompt(){
+    if (!isIOSDevice() || isStandaloneMode()) return;
+    var dismissed = false;
+    try { dismissed = localStorage.getItem("morx_a2hs_dismissed") === "1"; } catch(_){}
+    if (dismissed) return;
+    // The cloud-backup modal's full-screen backdrop would block clicks to
+    // this banner even though it's visible underneath — wait for it to
+    // clear rather than showing something untappable. Its own dismiss
+    // handler re-calls this once it closes.
+    var cloudOverlay = document.getElementById("cloudBackupPromptOverlay");
+    if (cloudOverlay && getComputedStyle(cloudOverlay).display !== "none") return;
+    var el = document.getElementById("a2hsPrompt");
+    if (el) el.style.display = "block";
+  }
+  var a2hsPromptEl = document.getElementById("a2hsPrompt");
+  var a2hsDismissBtn = document.getElementById("a2hsDismissBtn");
+  if (a2hsDismissBtn) a2hsDismissBtn.addEventListener("click", function(){
+    if (a2hsPromptEl) a2hsPromptEl.style.display = "none";
+    try { localStorage.setItem("morx_a2hs_dismissed", "1"); } catch(_){}
   });
 
   /* ============================================================
