@@ -147,7 +147,7 @@
      the screen edges rather than flush, with the content scrolling beneath
      it and a shadow to lift it off the page. */
   .ios-tabbar{
-    position:fixed;left:14px;right:14px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:50;display:flex;
+    position:fixed;left:14px;right:14px;bottom:calc(12px + env(safe-area-inset-bottom) + var(--vv-bottom-gap, 0px));z-index:50;display:flex;
     max-width:560px;margin:0 auto;
     background:rgba(255,255,255,0.82);-webkit-backdrop-filter:blur(24px) saturate(1.4);backdrop-filter:blur(24px) saturate(1.4);
     border-radius:var(--radius-full);border:1px solid rgba(255,255,255,0.7);
@@ -275,6 +275,7 @@
   .field-sm input:focus{background:#fff;border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
   .toggles-row{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:16px 20px;align-items:center;margin-top:2px;}
   .check-field{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+  .field label.check-field{display:flex;} /* wins over the more specific ".field label{display:block}" rule */
   /* Real iOS-style toggle switch, drawn with a shifting radial-gradient
      rather than ::before/::after — pseudo-elements on <input> (a "replaced"
      element) render inconsistently across browsers, so this is the safer
@@ -954,7 +955,7 @@
           <div class="field" style="grid-column:1/-1;"><label for="cu-bizSlogan">Slogan (optional)</label><input type="text" id="cu-bizSlogan" placeholder="Shown on the opening screen" spellcheck="true" autocorrect="on" autocapitalize="sentences"></div>
           <div class="field"><label for="cu-bizPhone">Phone</label><input type="text" id="cu-bizPhone" placeholder="07…"></div>
           <div class="field"><label for="cu-bizEmail">Email</label><input type="text" id="cu-bizEmail" placeholder="you@example.com"></div>
-          <div class="field"><label for="cu-vatRegistered"></label><label class="check-field" style="margin-top:22px;"><input type="checkbox" id="cu-vatRegistered"> VAT registered</label></div>
+          <div class="field"><label for="cu-vatRegistered" style="visibility:hidden;">Spacer</label><label class="check-field" style="min-height:38px;"><input type="checkbox" id="cu-vatRegistered"> VAT registered</label></div>
           <div class="field" id="cu-vatNumberField" style="display:none;"><label for="cu-vatNumber">VAT number</label><input type="text" id="cu-vatNumber"></div>
           <div class="field"><label for="cu-defaultVatRate">Default VAT rate</label><div class="field-prefix"><input type="number" id="cu-defaultVatRate" value="20" min="0" max="100" step="0.5"><span class="pfx" style="left:auto;right:10px;">%</span></div></div>
         </div>
@@ -1429,7 +1430,7 @@
 
 <script>
 /* jsPDF 4.2.1 — vendored inline for offline, single-file PDF generation
-   (used by the Share PDF button on quotes/invoices). MIT licensed,
+   (used by the Share / Print / Save button on quotes/invoices). MIT licensed,
    https://github.com/MrRio/jsPDF */
 /** @license
  *
@@ -3582,8 +3583,7 @@ window.addEventListener("error", function(e){
     function actionsHtml(doc){
       var btns = '<button data-action="duplicate">Duplicate</button>';
       if (doc.docType==="quote") btns += '<button class="primary" data-action="convert">Convert to invoice</button>';
-      btns += '<button data-action="print">Print / Save PDF</button>';
-      btns += '<button data-action="share">Share PDF…</button>';
+      btns += '<button data-action="share">Share / Print / Save</button>';
       btns += '<button data-action="archive">'+(doc.archived?"Unarchive":"Archive")+'</button>';
       btns += '<button class="danger" data-action="delete">Delete</button>';
       return '<div class="doc-actions">'+btns+'</div>';
@@ -3820,7 +3820,7 @@ window.addEventListener("error", function(e){
 
         var y = marginTop, leftY = marginTop;
         if (logoInfo){
-          var maxW=42, maxH=22, ratio=Math.min(maxW/logoInfo.w, maxH/logoInfo.h);
+          var maxW=54.6, maxH=28.6, ratio=Math.min(maxW/logoInfo.w, maxH/logoInfo.h);
           var lw=logoInfo.w*ratio, lh=logoInfo.h*ratio;
           try { pdf.addImage(logoInfo.dataUrl, imgFormatFromDataUrl(logoInfo.dataUrl), leftX, leftY, lw, lh); } catch(e){}
           leftY += lh + 4;
@@ -3857,7 +3857,7 @@ window.addEventListener("error", function(e){
         y = Math.max(leftY, metaY) + 4;
         pdf.setDrawColor(bc[0],bc[1],bc[2]); pdf.setLineWidth(0.8);
         pdf.line(marginX, y, pageW-marginX, y);
-        y += 8;
+        y += 8 + 15; // +15mm ≈ 3 extra rows of breathing room below the header
 
         pdf.setFont("helvetica","bold"); pdf.setFontSize(7.5); pdf.setTextColor(150,150,150);
         pdf.text("BILL TO", leftX, y); y += 4.5;
@@ -3967,7 +3967,7 @@ window.addEventListener("error", function(e){
         showToast("Sharing isn't supported here — saved "+filename+" instead");
       }).catch(function(err){
         console.error(err);
-        showToast("Couldn't build the PDF — try Print / Save PDF instead");
+        showToast("Couldn't build the PDF — try again in a moment");
       }).then(function(){
         if (triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = originalLabel; }
       });
@@ -6000,6 +6000,32 @@ window.addEventListener("error", function(e){
        2. Manual JSON backup file (Save/Load) — always works, since it's
           just a normal file download/upload, independent of any storage API.
      ============================================================ */
+  // ---------- Live viewport-bottom-gap fix for the floating tab bar ----------
+  // On iOS, the visible viewport (window.visualViewport) can be shorter than
+  // window.innerHeight — Safari's own chrome taking space, or a standalone
+  // "Add to Home Screen" quirk — and env(safe-area-inset-bottom) alone
+  // doesn't account for that gap. Without this, the fixed-position tab bar
+  // sits above the true bottom edge with a strip of the page's own
+  // background visible underneath it. This measures the actual gap live and
+  // feeds it into --vv-bottom-gap, which both the tab bar's own position and
+  // --tabbar-h (used to reserve scroll space / stack the summary bar above
+  // it) pick up automatically.
+  function updateViewportBottomGap(){
+    var gap = 0;
+    if (window.visualViewport){
+      gap = Math.max(0, window.innerHeight - (window.visualViewport.height + window.visualViewport.offsetTop));
+    }
+    document.documentElement.style.setProperty("--vv-bottom-gap", gap + "px");
+    document.documentElement.style.setProperty("--tabbar-h", (72 + gap) + "px");
+  }
+  updateViewportBottomGap();
+  window.addEventListener("resize", updateViewportBottomGap);
+  window.addEventListener("orientationchange", function(){ setTimeout(updateViewportBottomGap, 50); });
+  if (window.visualViewport){
+    window.visualViewport.addEventListener("resize", updateViewportBottomGap);
+    window.visualViewport.addEventListener("scroll", updateViewportBottomGap);
+  }
+
   var STORAGE_KEY = "materials-estimator-v1";
   var toastEl = document.getElementById("toast");
   var toastMsgEl = document.getElementById("toastMsg");
