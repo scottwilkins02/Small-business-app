@@ -251,6 +251,9 @@
   .clear-all-btn.armed{background:var(--red);color:#fff;border-color:var(--red);}
 
   .room-card{background:var(--surface);border-radius:var(--radius-lg);padding:16px 16px 18px;margin-bottom:14px;box-shadow:var(--shadow);}
+  .doc-summary-row{display:flex;align-items:center;gap:10px;border-radius:var(--radius-lg);padding:13px 14px;margin-bottom:10px;box-shadow:var(--shadow);border:none;font-family:inherit;transition:transform .1s ease;}
+  .doc-summary-row .dash-d-icon{width:20px;height:20px;}
+  .doc-summary-row .dash-d-label{font-size:14.5px;}
   .room-card.archived{opacity:0.72;}
   .room-card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
   .room-index{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;border-radius:6px;padding:4px 8px;flex:none;}
@@ -1164,20 +1167,23 @@
       </div>
       <div class="search-row">
         <input type="text" id="qt-search" aria-label="Search quotes and invoices" placeholder="🔍 Search number, customer, description, notes…">
-        <select id="qt-jumpSelect" aria-label="Jump to a document, chronological"><option value="">Jump to… (newest first)</option></select>
+        <button type="button" id="qt-moreFiltersBtn" class="toolbar-btn" aria-expanded="false" aria-controls="qt-moreFilters" style="flex:none;">Filters</button>
       </div>
       <div class="type-toggle" id="qt-typeToggle">
         <button data-filter="quote" class="active">Quotes</button>
         <button data-filter="invoice">Invoices</button>
         <button data-filter="all">All</button>
       </div>
-      <div class="type-toggle" id="qt-statusToggle" style="margin-top:-4px;">
-        <button data-filter="active" class="active">Active</button>
-        <button data-filter="archived">Archived</button>
-        <button data-filter="all">All statuses</button>
-      </div>
-      <div class="customer-picker" style="margin-bottom:4px;">
-        <select id="qt-customerFilter" aria-label="Filter by customer"><option value="">All customers</option></select>
+      <div id="qt-moreFilters" hidden>
+        <div class="type-toggle" id="qt-statusToggle" style="margin-top:8px;">
+          <button data-filter="active" class="active">Active</button>
+          <button data-filter="archived">Archived</button>
+          <button data-filter="all">All statuses</button>
+        </div>
+        <div class="customer-picker" style="margin-top:8px;margin-bottom:4px;">
+          <select id="qt-customerFilter" aria-label="Filter by customer"><option value="">All customers</option></select>
+        </div>
+        <select id="qt-jumpSelect" aria-label="Jump to a document, chronological" style="width:100%;margin-bottom:4px;"><option value="">Jump to… (newest first)</option></select>
       </div>
       <div id="qt-docContainer"></div>
       <div id="qt-expandRow" style="text-align:center;margin-top:10px;"></div>
@@ -3495,6 +3501,16 @@ window.addEventListener("error", function(e){
     var docContainer=$id("qt-docContainer"), docCountEl=$id("qt-docCount"), addQuoteBtn=$id("qt-addQuote"), typeToggle=$id("qt-typeToggle");
     var statusToggle=$id("qt-statusToggle"), expandRow=$id("qt-expandRow"), searchInput=$id("qt-search"), customerFilterSelect=$id("qt-customerFilter"), jumpSelect=$id("qt-jumpSelect");
     var summaryTotals=$id("qt-summaryTotals");
+    var moreFiltersBtn=$id("qt-moreFiltersBtn"), moreFiltersPanel=$id("qt-moreFilters");
+    var expandedDocIds = {}; // doc.id -> true while its full editor is open; collapsed (summary row) otherwise
+    if (moreFiltersBtn && moreFiltersPanel){
+      moreFiltersBtn.addEventListener("click", function(){
+        var show = moreFiltersPanel.hidden;
+        moreFiltersPanel.hidden = !show;
+        moreFiltersBtn.setAttribute("aria-expanded", String(show));
+        moreFiltersBtn.classList.toggle("primary", show);
+      });
+    }
     var docSearchTerm = "";
     var docCustomerFilter = ""; // "" = all customers, else a customer id
 
@@ -3642,12 +3658,27 @@ window.addEventListener("error", function(e){
       btns += '<button class="danger" data-action="delete">Delete</button>';
       return '<div class="doc-actions">'+btns+'</div>';
     }
+    function renderDocSummaryRow(doc, idx){
+      var totals = calcTotals(doc);
+      var custName = (doc.customerSnapshot && doc.customerSnapshot.name) || "—";
+      var typeIcon = doc.docType==="quote" ? "doc" : "quotes";
+      return '<button type="button" class="dash-disclosure doc-summary-row" data-summary-id="'+doc.id+'" style="width:100%;text-align:left;background:var(--surface);cursor:pointer;">' +
+        '<svg class="icon dash-d-icon"><use href="#icon-'+typeIcon+'"></use></svg>' +
+        '<span style="flex:1;min-width:0;">' +
+          '<span class="dash-d-label" style="display:block;'+(doc.archived?"color:var(--ink-faint);":"")+'">'+escapeHtml(custName)+'</span>' +
+          '<span style="display:flex;align-items:center;gap:6px;margin-top:2px;">'+statusBadgeHtml(doc,totals)+'<span class="dash-d-meta">'+doc.number+'</span></span>' +
+        '</span>' +
+        '<span class="dash-d-label" style="flex:none;">'+fmtCost(totals.total)+'</span>' +
+        '<span class="dash-d-chevron">&rsaquo;</span>' +
+      '</button>';
+    }
     function renderDocCard(doc, idx){
       var totals = calcTotals(doc);
       var dateLabel = doc.docType==="quote" ? "Valid until" : "Due date";
       return '<div class="room-card'+(doc.archived?" archived":"")+'" data-id="'+doc.id+'">' +
         '<div class="room-card-header"><span class="room-index">'+(doc.docType==="quote"?"Q":"I")+(idx+1)+'</span>' +
         '<div style="flex:1;min-width:0;"><b class="mono">'+doc.number+'</b> '+statusBadgeHtml(doc,totals)+(doc.archived?' <span class="status-badge status-draft">Archived</span>':'')+'</div>' +
+        '<button type="button" class="remove-room" data-action="collapse" style="color:var(--ink-soft);">Collapse</button>' +
         '</div>' +
         '<div class="customer-picker"><input type="text" data-action="filterCustomers" aria-label="Filter customer list" placeholder="🔍 Filter…"><select data-field="customerId">'+customerOptionsHtml(doc.customerId, "", doc.customerSnapshot && doc.customerSnapshot.name)+'</select></div>' +
         '<div class="room-inputs">' +
@@ -3734,7 +3765,7 @@ window.addEventListener("error", function(e){
       var visible = (docExpanded || searching) ? list : list.slice(0, VISIBLE_CAP);
       var typeWord = currentFilter==="all" ? "documents" : currentFilter+"s";
       var statusWord = docStatusFilter==="archived" ? "archived " : docStatusFilter==="active" ? "active " : "";
-      docContainer.innerHTML = visible.length ? visible.map(function(d,i){ return renderDocCard(d,i); }).join("") :
+      docContainer.innerHTML = visible.length ? visible.map(function(d,i){ return expandedDocIds[d.id] ? renderDocCard(d,i) : renderDocSummaryRow(d,i); }).join("") :
         (searching ? '<div class="empty-state">No '+typeWord+' match &ldquo;'+escapeHtml(docSearchTerm.trim())+'&rdquo;.</div>'
                    : '<div class="empty-state">No '+statusWord+typeWord+'.</div>');
       if (!searching && list.length > VISIBLE_CAP){
@@ -4105,9 +4136,20 @@ window.addEventListener("error", function(e){
     });
 
     docContainer.addEventListener("click", function(e){
+      var summaryRow = e.target.closest("[data-summary-id]");
+      if (summaryRow){
+        expandedDocIds[summaryRow.dataset.summaryId] = true;
+        renderList();
+        return;
+      }
       var card = e.target.closest(".room-card"); if (!card) return;
       var doc = documents.filter(function(d){return d.id===card.dataset.id;})[0]; if (!doc) return;
 
+      if (e.target.dataset.action==="collapse"){
+        delete expandedDocIds[doc.id];
+        renderList();
+        return;
+      }
       if (e.target.dataset.action==="addLine"){
         doc.lineItems = doc.lineItems||[];
         doc.lineItems.push({id:genId("li"), description:"", qty:1, unitPrice:0});
@@ -4165,6 +4207,7 @@ window.addEventListener("error", function(e){
         copy.createdAt = new Date().toISOString();
         documents.push(copy);
         saveDoc(copy);
+        expandedDocIds[copy.id] = true;
         showToast("Duplicated as "+copy.number);
         renderList();
         return;
@@ -4186,6 +4229,7 @@ window.addEventListener("error", function(e){
         doc.convertedToInvoiceId = inv.id;
         doc.status = "accepted";
         saveDoc(doc);
+        expandedDocIds[inv.id] = true;
         showToast("Converted to "+inv.number);
         currentFilter = "invoice"; docStatusFilter = "active"; docExpanded = false; docSearchTerm = ""; searchInput.value = ""; docCustomerFilter = "";
         renderList();
@@ -4223,6 +4267,7 @@ window.addEventListener("error", function(e){
       var q = makeQuote(customerId);
       documents.push(q);
       saveDoc(q);
+      expandedDocIds[q.id] = true;
       currentFilter="quote"; docStatusFilter="active"; docExpanded=false; docSearchTerm=""; searchInput.value=""; docCustomerFilter="";
       renderList();
       if (window.__switchToTab) window.__switchToTab("quotes");
@@ -4264,6 +4309,7 @@ window.addEventListener("error", function(e){
       // it's archived, older than the 3 most-recently-active items normally
       // shown, or hidden by whatever search/customer filter was left set.
       currentFilter = d.docType; docStatusFilter = "all"; docExpanded = true; docSearchTerm = ""; searchInput.value = ""; docCustomerFilter = "";
+      expandedDocIds[id] = true;
       renderList();
       setTimeout(function(){
         var card = docContainer.querySelector('.room-card[data-id="'+id+'"]');
@@ -4433,8 +4479,9 @@ window.addEventListener("error", function(e){
       }
       if (e.target.dataset.action==="use"){
         if (!quotesModRef){ showToast("Quotes isn't ready yet — try again in a moment"); return; }
-        quotesModRef.createQuoteFromTemplate(tpl);
+        var newQ = quotesModRef.createQuoteFromTemplate(tpl);
         if (window.__switchToTab) window.__switchToTab("quotes");
+        if (newQ && quotesModRef.focusDocument) quotesModRef.focusDocument(newQ.id);
         showToast("New quote created from \""+tpl.name+"\"");
         return;
       }
