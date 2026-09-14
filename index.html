@@ -1,5 +1,10 @@
 <!DOCTYPE html>
 <!--
+  © 2026 Morx. All rights reserved.
+  This software and its source code are proprietary. No part of it may be
+  copied, redistributed, resold, or used to create a competing product
+  without prior written permission from the copyright holder.
+
   Morx — build 2026-09-13
   Google Drive sync (Settings tab) — a redirect + server-side token
   exchange flow (see /api/gdrive-*.js and the module comment above
@@ -436,15 +441,27 @@
   .summary-panel h2{font-size:16px;margin-bottom:2px;}
   .summary-sub{font-size:11.5px;color:var(--ink-faint);margin-bottom:14px;}
   .summary-totals{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:16px;}
-  /* ---------- Dashboard hero metric + secondary row ---------- */
-  #dash-headline{display:block;}
-  .dash-hero{background:var(--navy);color:#fff;border-radius:var(--radius-lg);padding:20px 22px;margin-bottom:10px;box-shadow:var(--shadow);}
-  .dash-hero .flabel{font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.7);font-weight:600;}
-  .dash-hero .fval{font-size:32px;font-weight:700;margin-top:4px;letter-spacing:-0.01em;}
-  .dash-secondary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-  .dash-secondary .stotal{background:var(--surface-2);border-radius:12px;padding:10px 10px;}
-  .dash-secondary .stotal .fval{font-size:15px;}
-  .dash-secondary .stotal.dash-hot{background:#FBEBE7;}
+  /* ---------- Dashboard: status line + action rows + disclosures ---------- */
+  .dash-status-headline{font-size:19px;font-weight:700;font-family:'Space Grotesk',sans-serif;margin:0 0 12px;letter-spacing:-0.01em;}
+  .dash-action-row{width:100%;display:flex;align-items:center;gap:10px;padding:13px 14px;border:none;border-radius:12px;text-align:left;margin-bottom:8px;font-size:14px;font-weight:600;font-family:inherit;transition:transform .1s ease;}
+  .dash-action-row:last-child{margin-bottom:0;}
+  .dash-action-row .dash-action-label{flex:1;}
+  .dash-action-row .icon{flex:none;}
+  .dash-action-row.dash-danger{background:#FBEAE7;color:var(--red);}
+  .dash-action-row.dash-warning{background:var(--amber-soft);color:var(--amber);}
+  .dash-action-row.dash-cta{background:var(--navy);color:#fff;}
+  .dash-action-row.dash-calm{background:var(--surface-2);color:var(--ink-soft);cursor:default;}
+
+  .dash-disclosure{border-bottom:1px solid var(--line);}
+  .dash-disclosure:last-child{border-bottom:none;}
+  .dash-disclosure summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:14px 16px;}
+  .dash-disclosure summary::-webkit-details-marker{display:none;}
+  .dash-disclosure .dash-d-icon{flex:none;color:var(--ink-soft);width:18px;height:18px;}
+  .dash-disclosure .dash-d-label{flex:1;font-size:14.5px;font-weight:600;color:var(--ink);}
+  .dash-disclosure .dash-d-meta{font-size:12.5px;color:var(--ink-faint);font-weight:600;}
+  .dash-disclosure .dash-d-chevron{flex:none;color:var(--ink-faint);font-size:20px;line-height:1;transition:transform .15s ease;}
+  .dash-disclosure[open] .dash-d-chevron{transform:rotate(90deg);}
+  .dash-disclosure-body{padding:0 16px 16px;}
   .stotal .flabel{font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);font-weight:600;}
   .stotal .fval{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;margin-top:2px;}
   .stotal.headline{grid-column:1/-1;background:var(--blue-soft);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;}
@@ -1231,33 +1248,57 @@
     </section>
 
     <section class="rooms-section">
-      <div class="rooms-header"><h2>Snapshot</h2></div>
-      <div class="summary-totals" id="dash-headline" style="margin-bottom:16px;"></div>
+      <div id="dash-status" style="margin-bottom:14px;"></div>
 
-      <div class="panel" style="margin-bottom:14px;">
-        <h3 style="font-size:14px;margin:0 0 2px;">Revenue received — last 6 months</h3>
-        <p style="font-size:11.5px;color:var(--ink-faint);margin:0 0 10px;">By payment date, across all invoices (including archived).</p>
-        <div id="dash-revenueChart"></div>
-      </div>
-
-      <div class="panel" style="margin-bottom:14px;">
-        <h3 style="font-size:14px;margin:0 0 2px;">Quotes: created vs won — last 6 months</h3>
-        <p style="font-size:11.5px;color:var(--ink-faint);margin:0 0 6px;">Grouped by the month each quote was created; "won" means that quote was ultimately accepted or converted to an invoice, whenever that happened.</p>
-        <div style="display:flex;gap:14px;font-size:11px;color:var(--ink-faint);margin-bottom:8px;">
-          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#1B3A6B;margin-right:5px;"></span>Created</span>
-          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#0F8A6B;margin-right:5px;"></span>Won</span>
-        </div>
-        <div id="dash-quotesChart"></div>
-      </div>
-
-      <div class="panel" style="margin-bottom:14px;">
-        <h3 style="font-size:14px;margin:0 0 4px;">Overdue &amp; unpaid</h3>
-        <div id="dash-overdueList"></div>
-      </div>
-
-      <div class="panel">
-        <h3 style="font-size:14px;margin:0 0 4px;">Recent activity</h3>
-        <div id="dash-recentList"></div>
+      <div class="panel" style="padding:0;overflow:hidden;">
+        <details class="dash-disclosure">
+          <summary>
+            <svg class="icon dash-d-icon"><use href="#icon-dashboard"></use></svg>
+            <span class="dash-d-label">Revenue this month</span>
+            <span class="dash-d-meta" id="dash-revenueMeta"></span>
+            <span class="dash-d-chevron">&rsaquo;</span>
+          </summary>
+          <div class="dash-disclosure-body">
+            <p style="font-size:11.5px;color:var(--ink-faint);margin:0 0 10px;">By payment date, across all invoices (including archived), last 6 months.</p>
+            <div id="dash-revenueChart"></div>
+          </div>
+        </details>
+        <details class="dash-disclosure">
+          <summary>
+            <svg class="icon dash-d-icon"><use href="#icon-quotes"></use></svg>
+            <span class="dash-d-label">Quotes: created vs won</span>
+            <span class="dash-d-chevron">&rsaquo;</span>
+          </summary>
+          <div class="dash-disclosure-body">
+            <p style="font-size:11.5px;color:var(--ink-faint);margin:0 0 6px;">Grouped by the month each quote was created; "won" means that quote was ultimately accepted or converted to an invoice, whenever that happened.</p>
+            <div style="display:flex;gap:14px;font-size:11px;color:var(--ink-faint);margin-bottom:8px;">
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#1B3A6B;margin-right:5px;"></span>Created</span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#0F8A6B;margin-right:5px;"></span>Won</span>
+            </div>
+            <div id="dash-quotesChart"></div>
+          </div>
+        </details>
+        <details class="dash-disclosure">
+          <summary>
+            <svg class="icon dash-d-icon"><use href="#icon-warning"></use></svg>
+            <span class="dash-d-label">Overdue &amp; unpaid</span>
+            <span class="dash-d-meta" id="dash-overdueMeta"></span>
+            <span class="dash-d-chevron">&rsaquo;</span>
+          </summary>
+          <div class="dash-disclosure-body">
+            <div id="dash-overdueList"></div>
+          </div>
+        </details>
+        <details class="dash-disclosure">
+          <summary>
+            <svg class="icon dash-d-icon"><use href="#icon-templates"></use></svg>
+            <span class="dash-d-label">Recent activity</span>
+            <span class="dash-d-chevron">&rsaquo;</span>
+          </summary>
+          <div class="dash-disclosure-body">
+            <div id="dash-recentList"></div>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -1407,6 +1448,7 @@
     </div>
   </details>
   </div>
+  <p style="text-align:center;font-size:11.5px;color:var(--ink-faint);margin:24px 0 8px;">© 2026 Morx. All rights reserved.</p>
 </section>
 
 <!-- ================= MORE (grouped menu for secondary business tools) ================= -->
@@ -3985,13 +4027,17 @@ window.addEventListener("error", function(e){
       });
     }
 
-    addQuoteBtn.addEventListener("click", function(){
+    function startBlankQuote(){
       var q = makeQuote(null);
       documents.push(q);
       saveDoc(q);
       currentFilter="quote"; docStatusFilter="active"; docExpanded=false; docSearchTerm=""; searchInput.value=""; docCustomerFilter="";
       renderList();
-    });
+      if (window.__switchToTab) window.__switchToTab("quotes");
+      if (typeof focusDocument==="function") focusDocument(q.id);
+    }
+    window.__startBlankQuote = startBlankQuote;
+    addQuoteBtn.addEventListener("click", startBlankQuote);
     typeToggle.addEventListener("click", function(e){
       var btn = e.target.closest("button[data-filter]"); if (!btn) return;
       currentFilter = btn.dataset.filter;
@@ -4424,9 +4470,10 @@ window.addEventListener("error", function(e){
 
   /* ============ Dashboard module (read-only, derived from Quotes/Customers) ============ */
   function createDashboardModule(quotesModRef){
-    var headlineEl=document.getElementById("dash-headline"), overdueEl=document.getElementById("dash-overdueList"),
+    var statusEl=document.getElementById("dash-status"), overdueEl=document.getElementById("dash-overdueList"),
         recentEl=document.getElementById("dash-recentList"), summaryTotals=document.getElementById("dash-summaryTotals");
     var revenueChartEl=document.getElementById("dash-revenueChart"), quotesChartEl=document.getElementById("dash-quotesChart");
+    var revenueMetaEl=document.getElementById("dash-revenueMeta"), overdueMetaEl=document.getElementById("dash-overdueMeta");
     var lastChartData = null;
 
     // Everything on the Dashboard, charts included, is computed live from the
@@ -4523,15 +4570,30 @@ window.addEventListener("error", function(e){
         }
       });
       overdueRows.sort(function(a,b){ return b.days-a.days; });
+      var waitingQuotes = quotes.filter(function(d){ return d.status!=="declined" && !d.convertedToInvoiceId; });
 
-      var overdueHot = overdueAmount > 0.004;
-      headlineEl.innerHTML =
-        '<div class="dash-hero"><div class="flabel">Outstanding balance</div><div class="fval mono">'+fmtCost(outstanding)+'</div></div>' +
-        '<div class="dash-secondary">' +
-          '<div class="stotal'+(overdueHot?' dash-hot':'')+'"><div class="flabel">Overdue</div><div class="fval mono"'+(overdueHot?' style="color:var(--red);"':'')+'>'+fmtCost(overdueAmount)+'</div></div>' +
-          '<div class="stotal"><div class="flabel">This month</div><div class="fval mono">'+fmtCost(receivedThisMonth)+'</div></div>' +
-          '<div class="stotal"><div class="flabel">All time</div><div class="fval mono">'+fmtCost(receivedAllTime)+'</div></div>' +
-        '</div>';
+      var headline = outstanding > 0.004 ? (fmtCost(outstanding) + " owed to you") : "All caught up";
+      var actionsHtml = "";
+      if (overdueRows.length){
+        actionsHtml += '<button class="dash-action-row dash-danger" data-dash-action="overdue">' +
+          '<svg class="icon"><use href="#icon-warning"></use></svg>' +
+          '<span class="dash-action-label">'+overdueRows.length+' invoice'+(overdueRows.length===1?" is":"s are")+' overdue</span>' +
+          '<span style="opacity:.75;">&rsaquo;</span></button>';
+      }
+      if (waitingQuotes.length){
+        actionsHtml += '<button class="dash-action-row dash-warning" data-dash-action="waiting">' +
+          '<svg class="icon"><use href="#icon-quotes"></use></svg>' +
+          '<span class="dash-action-label">'+waitingQuotes.length+' quote'+(waitingQuotes.length===1?" is":"s are")+' waiting on a reply</span>' +
+          '<span style="opacity:.75;">&rsaquo;</span></button>';
+      }
+      actionsHtml += '<button class="dash-action-row dash-cta" data-dash-action="newquote">' +
+        '<span class="icon" style="font-size:18px;font-weight:700;width:1.15em;text-align:center;">+</span>' +
+        '<span class="dash-action-label">Start a new quote</span>' +
+        '<span style="opacity:.75;">&rsaquo;</span></button>';
+      statusEl.innerHTML = '<div class="dash-status-headline">'+headline+'</div>' + actionsHtml;
+
+      if (overdueMetaEl) overdueMetaEl.textContent = overdueRows.length ? (fmtCost(overdueAmount)+' · '+overdueRows.length) : "None";
+      if (revenueMetaEl) revenueMetaEl.textContent = fmtCost(receivedThisMonth);
 
       overdueEl.innerHTML = overdueRows.length ? overdueRows.map(function(r){
         return rowHtml('<svg class="icon"><use href="#icon-quotes"></use></svg>', r.doc, fmtCost(r.balance)+' · '+r.days+'d', "var(--red)");
@@ -4582,7 +4644,7 @@ window.addEventListener("error", function(e){
         return rowHtml(d.docType==="quote" ? '<svg class="icon"><use href="#icon-doc"></use></svg>' : '<svg class="icon"><use href="#icon-quotes"></use></svg>', d, fmtCost(t.total));
       }).join("") : '<div class="empty-state">Nothing yet — create your first quote.</div>';
 
-      var openQuotes = quotes.filter(function(d){ return d.status!=="declined" && !d.convertedToInvoiceId; });
+      var openQuotes = waitingQuotes;
       var openQuotesValue = openQuotes.reduce(function(s,d){ return s+calcTotals(d).total; }, 0);
       var actedOn = quotes.filter(function(d){ return d.status==="accepted" || d.status==="declined" || !!d.convertedToInvoiceId; });
       var won = quotes.filter(function(d){ return !!d.convertedToInvoiceId || d.status==="accepted"; });
@@ -4604,6 +4666,20 @@ window.addEventListener("error", function(e){
         if (quotesModRef && quotesModRef.focusDocument) quotesModRef.focusDocument(id);
       });
     });
+    if (statusEl){
+      statusEl.addEventListener("click", function(e){
+        var btn = e.target.closest("[data-dash-action]"); if (!btn) return;
+        var action = btn.dataset.dashAction;
+        if (action==="newquote"){
+          if (window.__startBlankQuote) window.__startBlankQuote();
+          return;
+        }
+        // overdue / waiting both land on the Quotes & Invoices screen —
+        // the specific item lists are one tap away in the disclosures below,
+        // this just gets him to the right screen fast.
+        if (window.__switchToTab) window.__switchToTab("quotes");
+      });
+    }
 
     refresh();
     return { refresh: refresh, getChartData: function(){ return lastChartData; } };
