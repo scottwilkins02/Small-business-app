@@ -338,9 +338,23 @@
   .li-remove{background:none;border:none;color:var(--red);font-size:16px;padding:2px 6px;}
   .add-line-btn{background:var(--surface-2);border:1px dashed var(--line);border-radius:7px;padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--ink-soft);width:100%;}
 
-  .doc-totals{display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px;}
+  .li-chip-label{font-size:12px;font-weight:600;color:var(--ink-soft);margin:10px 0 6px;}
+  .li-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+  .li-chip{background:var(--navy-soft);border:1px solid var(--navy);border-radius:999px;padding:7px 12px;font-size:12.5px;font-weight:600;color:var(--navy);}
+  .li-cards{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+  .li-card{background:var(--surface-2);border-radius:10px;padding:8px 10px;}
+  .li-card-top{display:flex;align-items:center;gap:6px;}
+  .li-card-top input[type=text]{flex:1;border:1px solid transparent;border-radius:8px;padding:7px 9px;font-size:13.5px;background:#fff;transition:border-color .12s ease, box-shadow .12s ease;}
+  .li-card-top input[type=text]:focus{border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
+  .li-card-bottom{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:12.5px;color:var(--ink-soft);font-weight:600;}
+  .li-field{display:flex;align-items:center;gap:4px;}
+  .li-field input{width:52px;border:1px solid transparent;border-radius:7px;padding:5px 6px;font-size:13px;background:#fff;font-family:'IBM Plex Mono',monospace;text-align:right;transition:border-color .12s ease, box-shadow .12s ease;}
+  .li-field input:focus{border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
+  .li-cards .li-total{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--ink);}
+
+  .doc-totals{display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-faint);}
   .doc-totals .row{display:flex;gap:14px;width:220px;max-width:100%;justify-content:space-between;}
-  .doc-totals .row.grand{font-weight:700;font-size:16px;font-family:'IBM Plex Mono',monospace;border-top:1px dashed var(--line);padding-top:6px;margin-top:2px;}
+  .doc-totals .row.grand{font-weight:700;font-size:26px;font-family:'IBM Plex Mono',monospace;border-top:1px dashed var(--line);padding-top:8px;margin-top:4px;color:var(--ink);}
 
   .doc-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;}
   .doc-actions button{background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:12px;font-weight:600;color:var(--ink-soft);}
@@ -3607,18 +3621,30 @@ window.addEventListener("error", function(e){
       return opts;
     }
     function lineItemsHtml(doc){
+      var priceItems = window.__getPriceListItems ? window.__getPriceListItems() : [];
+      var chipsHtml = "";
+      if (priceItems.length){
+        chipsHtml = '<div class="li-chip-label">Add from your price list</div><div class="li-chips">' +
+          priceItems.map(function(pi){
+            return '<button type="button" class="li-chip" data-priceitem="'+pi.id+'">+ '+escapeHtml(pi.name)+' · '+fmtCost(pi.price)+'</button>';
+          }).join("") + '</div>';
+      }
       var rows = (doc.lineItems||[]).map(function(li){
         var total = num(li.qty)*num(li.unitPrice);
-        return '<tr data-li="'+li.id+'">' +
-          '<td><input type="text" data-lf="description" list="descSuggestions" spellcheck="true" autocorrect="on" autocapitalize="sentences" value="'+escapeHtml(li.description||"")+'" placeholder="Description"></td>' +
-          '<td style="width:56px;"><input type="number" data-lf="qty" value="'+li.qty+'" min="0" step="0.1"></td>' +
-          '<td style="width:80px;"><input type="number" data-lf="unitPrice" value="'+li.unitPrice+'" min="0" step="0.01"></td>' +
-          '<td class="li-total">'+fmtCost(total)+'</td>' +
-          '<td><button class="li-remove" data-liaction="remove" aria-label="Remove line">✕</button></td>' +
-        '</tr>';
+        return '<div class="li-card" data-li="'+li.id+'">' +
+          '<div class="li-card-top">' +
+            '<input type="text" data-lf="description" list="descSuggestions" spellcheck="true" autocorrect="on" autocapitalize="sentences" value="'+escapeHtml(li.description||"")+'" placeholder="Description">' +
+            '<button type="button" class="li-remove" data-liaction="remove" aria-label="Remove line">✕</button>' +
+          '</div>' +
+          '<div class="li-card-bottom">' +
+            '<span class="li-field">Qty <input type="number" data-lf="qty" value="'+li.qty+'" min="0" step="0.1"></span>' +
+            '<span class="li-field">£ <input type="number" data-lf="unitPrice" value="'+li.unitPrice+'" min="0" step="0.01"></span>' +
+            '<span class="li-total">'+fmtCost(total)+'</span>' +
+          '</div>' +
+        '</div>';
       }).join("");
-      return '<table class="line-items-table"><thead><tr><th>Description</th><th>Qty</th><th>Unit £</th><th>Total</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>' +
-        '<button class="add-line-btn" data-action="addLine">+ Add line item</button>';
+      return chipsHtml + '<div class="li-cards">'+rows+'</div>' +
+        '<button type="button" class="add-line-btn" data-action="addLine">✎ Type a custom line</button>';
     }
     function totalsHtml(doc, totals){
       var rows = '<div class="row"><span>Subtotal</span><span>'+fmtCost(totals.subtotal)+'</span></div>';
@@ -3699,8 +3725,8 @@ window.addEventListener("error", function(e){
     function updateCardTotalsOnly(card, doc){
       var totals = calcTotals(doc);
       (doc.lineItems||[]).forEach(function(li){
-        var tr = card.querySelector('tr[data-li="'+li.id+'"]');
-        if (tr){ var cell = tr.querySelector(".li-total"); if (cell) cell.textContent = fmtCost(num(li.qty)*num(li.unitPrice)); }
+        var row = card.querySelector('.li-card[data-li="'+li.id+'"]');
+        if (row){ var cell = row.querySelector(".li-total"); if (cell) cell.textContent = fmtCost(num(li.qty)*num(li.unitPrice)); }
       });
       var totalsEl = card.querySelector(".doc-totals");
       if (totalsEl) totalsEl.outerHTML = totalsHtml(doc, totals);
@@ -4109,8 +4135,8 @@ window.addEventListener("error", function(e){
 
       var lf = t.dataset.lf;
       if (lf){
-        var tr = t.closest("tr[data-li]");
-        var li = (doc.lineItems||[]).filter(function(x){return x.id===tr.dataset.li;})[0];
+        var liEl = t.closest(".li-card[data-li]");
+        var li = (doc.lineItems||[]).filter(function(x){return x.id===liEl.dataset.li;})[0];
         if (li) li[lf] = (lf==="description") ? t.value : (Number(t.value)||0);
         saveDoc(doc);
         updateCardTotalsOnly(card, doc);
@@ -4150,6 +4176,23 @@ window.addEventListener("error", function(e){
         renderList();
         return;
       }
+      var chip = e.target.closest("[data-priceitem]");
+      if (chip){
+        var priceItems = window.__getPriceListItems ? window.__getPriceListItems() : [];
+        var pi = priceItems.filter(function(x){ return x.id===chip.dataset.priceitem; })[0];
+        if (pi){
+          doc.lineItems = doc.lineItems||[];
+          var onlyBlank = doc.lineItems.length===1 && !doc.lineItems[0].description && !num(doc.lineItems[0].unitPrice);
+          if (onlyBlank){
+            doc.lineItems[0].description = pi.name; doc.lineItems[0].qty = 1; doc.lineItems[0].unitPrice = pi.price;
+          } else {
+            doc.lineItems.push({id:genId("li"), description:pi.name, qty:1, unitPrice:pi.price});
+          }
+          saveDoc(doc);
+          renderList();
+        }
+        return;
+      }
       if (e.target.dataset.action==="addLine"){
         doc.lineItems = doc.lineItems||[];
         doc.lineItems.push({id:genId("li"), description:"", qty:1, unitPrice:0});
@@ -4163,8 +4206,8 @@ window.addEventListener("error", function(e){
         return;
       }
       if (e.target.dataset.liaction==="remove"){
-        var tr = e.target.closest("tr[data-li]");
-        doc.lineItems = (doc.lineItems||[]).filter(function(x){return x.id!==tr.dataset.li;});
+        var liRow = e.target.closest(".li-card[data-li]");
+        doc.lineItems = (doc.lineItems||[]).filter(function(x){return x.id!==liRow.dataset.li;});
         saveDoc(doc); renderList(); return;
       }
       if (e.target.dataset.action==="addPayment"){
@@ -4740,6 +4783,9 @@ window.addEventListener("error", function(e){
 
     window.__getPriceListNames = function(){
       return items.map(function(i){ return i.name; }).filter(Boolean);
+    };
+    window.__getPriceListItems = function(){
+      return items.filter(function(i){ return i.name; }).map(function(i){ return {id:i.id, name:i.name, price:num(i.price)}; });
     };
 
     function $id(id){ return document.getElementById(id); }
