@@ -4994,6 +4994,48 @@ window.addEventListener("error", function(e){
     ];
   }
 
+  // Default price list — 24 line items typical of a kitchen/bathroom
+  // refurb invoice, grouped as Labour / Bathroom / Kitchen / General.
+  // Prices are left at 0 deliberately: these are his rates to set, not
+  // ours to guess. Only seeded when the price list is completely empty
+  // (checked independently of isFirstRun below), so this never overwrites
+  // items he's already added or edited.
+  function seedDefaultPriceList(){
+    function pl(name, unit){
+      return { id: genId("pli"), name:name, unit:unit, price:0, notes:"", createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+    }
+    return [
+      // Labour
+      pl("Labour — day rate", "per day"),
+      pl("Labour — half day", "per half day"),
+      pl("Callout / minimum charge", "per callout"),
+      // Bathroom
+      pl("Bathroom strip-out / removal", "per job"),
+      pl("Supply & fit bath", "per item"),
+      pl("Supply & fit toilet (WC)", "per item"),
+      pl("Supply & fit basin", "per item"),
+      pl("Supply & fit shower enclosure/screen", "per item"),
+      pl("Tiling — walls", "per m²"),
+      pl("Tiling — floor", "per m²"),
+      pl("Waterproofing/tanking", "per job"),
+      pl("Extractor fan install", "per item"),
+      // Kitchen
+      pl("Kitchen strip-out / removal", "per job"),
+      pl("Supply & fit kitchen units", "per linear metre"),
+      pl("Worktop supply & fit", "per linear metre"),
+      pl("Sink & tap install", "per item"),
+      pl("Appliance install (integrated)", "per item"),
+      pl("Splashback tiling", "per m²"),
+      // General / sundries
+      pl("Plumbing — first fix", "per job"),
+      pl("Plumbing — second fix", "per job"),
+      pl("Electrics — first fix", "per job"),
+      pl("Electrics — second fix", "per job"),
+      pl("Plastering/making good", "per job"),
+      pl("Waste removal / skip", "per load")
+    ];
+  }
+
   // ---------- Splash screen ----------
   // Shown from the first paint (see the HTML at the top of <body>) so there's
   // no flash of the bare page underneath. Content is only filled in once
@@ -5081,6 +5123,11 @@ window.addEventListener("error", function(e){
     }
     var isFirstRun = !customersRows.length && !documentsRows.length && !templatesRows.length && !loadedBiz;
     if (isFirstRun) templatesRows = seedDefaultTemplates();
+    // Seeded independently of isFirstRun — the price list has its own
+    // IndexedDB store and its own empty-state check, so it seeds itself
+    // whenever it's genuinely empty rather than only on a brand new install.
+    var isPriceListEmpty = !priceListRows.length;
+    if (isPriceListEmpty) priceListRows = seedDefaultPriceList();
     custMod = createCustomersModule(customersRows);
     quotesMod = createQuotesModule(documentsRows, custMod);
     templatesMod = createTemplatesModule(templatesRows, quotesMod);
@@ -5092,6 +5139,7 @@ window.addEventListener("error", function(e){
     window.__setLogo = custMod.setLogoDataUrl;
     window.__getLogo = custMod.getLogoDataUrl;
     if (isFirstRun) templatesRows.forEach(function(t){ bizPut("templates", cloneDoc(t)).catch(function(){}); });
+    if (isPriceListEmpty) priceListRows.forEach(function(p){ bizPut("priceList", cloneDoc(p)).catch(function(){}); });
     populateAndScheduleSplashHide();
     refreshDescSuggestions();
 
