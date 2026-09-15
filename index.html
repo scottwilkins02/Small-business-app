@@ -176,7 +176,7 @@
   .toast{
     position:fixed;left:50%;bottom:100px;transform:translate(-50%,10px);
     background:#1a1c21;color:#fff;padding:10px 12px 10px 16px;border-radius:8px;font-size:13px;
-    box-shadow:var(--shadow);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+    box-shadow:var(--shadow);z-index:10500;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
     display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);
   }
   .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
@@ -353,14 +353,14 @@
   .li-cards .li-total{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--ink);}
 
   /* Price list modal */
-  .priceListModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:flex-end;justify-content:center;}
+  .priceListModal{position:fixed;top:0;left:0;width:100%;height:100%;height:100dvh;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:flex-end;justify-content:center;}
   .priceListModal.open{display:flex;}
-  .priceListModal-content{background:#fff;width:100%;max-height:85vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;max-width:640px;box-shadow:0 -4px 20px rgba(0,0,0,0.15);}
+  .priceListModal-content{background:#fff;width:100%;max-height:80vh;max-height:80dvh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;max-width:640px;box-shadow:0 -4px 20px rgba(0,0,0,0.15);}
   .priceListModal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid var(--line);flex-shrink:0;}
   .priceListModal-header h3{margin:0;font-size:17px;font-weight:600;color:var(--ink);}
-  .priceListModal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-soft);padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;}
-  .priceListModal-close:active{opacity:0.6;}
-  .priceListModal-items{overflow-y:auto;flex:1;padding:12px;}
+  .priceListModal-close{background:var(--surface-2);border:none;font-size:20px;line-height:1;cursor:pointer;color:var(--ink);padding:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .priceListModal-close:active{opacity:0.6;background:var(--line);}
+  .priceListModal-items{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:12px 12px 4px;}
   .priceListModal-item{display:block;width:100%;text-align:left;background:var(--navy-soft);border:1px solid var(--navy);border-radius:12px;padding:12px;margin-bottom:8px;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;transition:all 0.15s ease;position:relative;}
   .priceListModal-item:active{background:var(--navy);color:#fff;transform:scale(0.98);}
   .priceListModal-item.added{animation:priceItemAdded 0.4s ease;}
@@ -369,6 +369,9 @@
     50% { background:var(--moss); color:#fff; }
     100% { background:var(--navy-soft); color:var(--navy); }
   }
+  .priceListModal-footer{flex-shrink:0;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);box-shadow:0 -8px 12px -8px rgba(0,0,0,0.12);background:#fff;}
+  .priceListModal-done{width:100%;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;}
+  .priceListModal-done:active{opacity:0.85;}
 
   .doc-totals{display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-faint);width:100%;}
   .doc-totals .row{display:flex;gap:14px;width:220px;max-width:100%;justify-content:space-between;}
@@ -6633,24 +6636,23 @@ window.addEventListener("error", function(e){
   });
   sheetScrimEl.addEventListener("click", closeBreakdown);
 
-  /* Price List Modal event listeners */
-  var priceListModal = document.getElementById("priceListModal");
-  var priceListCloseBtn = document.querySelector("[data-action=\"closePriceListModal\"]");
-  
-  if (priceListCloseBtn){
-    priceListCloseBtn.addEventListener("click", closePriceListModal);
-  }
-  
-  if (priceListModal){
-    priceListModal.addEventListener("click", function(e){
-      if (e.target === priceListModal){
-        closePriceListModal();
-      }
-    });
-  }
-  
-  // Handle clicks on price list items
+  /* Price List Modal event listeners.
+     Delegated on document rather than queried directly — the modal's HTML
+     sits after this script tag in the page source, so a direct
+     getElementById()/querySelector() here at boot time would return null
+     (that part of the DOM hasn't been parsed yet). Delegation sidesteps
+     that entirely since it only looks at e.target when a click actually
+     happens, by which point the whole page exists. */
   document.addEventListener("click", function(e){
+    if (e.target.closest("[data-action=\"closePriceListModal\"]")){
+      closePriceListModal();
+      return;
+    }
+    // Backdrop click (tapping the dimmed area outside the sheet) closes it too.
+    if (e.target.id === "priceListModal"){
+      closePriceListModal();
+      return;
+    }
     var modalItem = e.target.closest(".priceListModal-item");
     if (modalItem){
       var piId = modalItem.dataset.piId;
@@ -6674,6 +6676,9 @@ window.addEventListener("error", function(e){
     </div>
     <div class="priceListModal-items" id="priceListModalItems">
       <!-- Items will be populated here -->
+    </div>
+    <div class="priceListModal-footer">
+      <button type="button" class="priceListModal-done" data-action="closePriceListModal">Done</button>
     </div>
   </div>
 </div>
