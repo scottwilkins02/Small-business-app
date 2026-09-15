@@ -352,9 +352,11 @@
   .li-field input:focus{border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
   .li-cards .li-total{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--ink);}
 
-  .doc-totals{display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-faint);}
+  .doc-totals{display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-faint);width:100%;}
   .doc-totals .row{display:flex;gap:14px;width:220px;max-width:100%;justify-content:space-between;}
-  .doc-totals .row.grand{font-weight:700;font-size:26px;font-family:'IBM Plex Mono',monospace;border-top:1px dashed var(--line);padding-top:8px;margin-top:4px;color:var(--ink);}
+  .doc-totals .row.grand{flex-direction:column;align-items:flex-end;gap:0;width:auto;max-width:100%;font-weight:700;font-family:'IBM Plex Mono',monospace;border-top:1px dashed var(--line);padding-top:8px;margin-top:4px;color:var(--ink);}
+  .doc-totals .row.grand>span:first-child{font-size:13px;font-weight:600;color:var(--ink-soft);font-family:'Space Grotesk',sans-serif;}
+  .doc-totals .row.grand>span:last-child{font-size:26px;white-space:nowrap;}
 
   .doc-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;}
   .doc-actions button{background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:12px;font-weight:600;color:var(--ink-soft);}
@@ -3168,6 +3170,7 @@ window.addEventListener("error", function(e){
     var custSearchTerm = "";
     var custExpanded = false;
     var VISIBLE_CAP = 3;
+    var expandedCustIds = {}; // customer.id -> true while its full editor is open; collapsed (summary row) otherwise
 
     function renderBizFields(){
       bizName.value = bizSettings.bizName||"";
@@ -3289,6 +3292,34 @@ window.addEventListener("error", function(e){
       return list;
     }
 
+    function renderCustomerSummaryRow(c, idx){
+      var meta = c.address || c.phone || c.email || "No details yet";
+      return '<button type="button" class="dash-disclosure doc-summary-row" data-cust-summary-id="'+c.id+'" style="width:100%;text-align:left;background:var(--surface);cursor:pointer;">' +
+        '<svg class="icon dash-d-icon"><use href="#icon-customers"></use></svg>' +
+        '<span style="flex:1;min-width:0;">' +
+          '<span class="dash-d-label" style="display:block;'+(c.archived?"color:var(--ink-faint);":"")+'">'+escapeHtml(c.name)+(c.archived?' <span class="status-badge status-draft">Archived</span>':'')+'</span>' +
+          '<span class="dash-d-meta" style="display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(meta)+'</span>' +
+        '</span>' +
+        '<span class="dash-d-chevron">&rsaquo;</span>' +
+      '</button>';
+    }
+    function renderCustomerCard(c, idx){
+      return '<div class="room-card'+(c.archived?" archived":"")+'" data-id="'+c.id+'">' +
+            '<div class="room-card-header"><span class="room-index">C'+(idx+1)+'</span>' +
+            '<div class="room-name-wrap"><input class="room-name" type="text" data-field="name" value="'+escapeHtml(c.name)+'" aria-label="Customer name" autocomplete="off" enterkeyhint="done" spellcheck="true" autocorrect="on" autocapitalize="words"><span class="edit-icon" aria-hidden="true">✎</span></div>' +
+            '<button type="button" class="remove-room" data-action="collapse" style="color:var(--ink-soft);">Collapse</button>' +
+            '<button class="remove-room" data-action="delete">Remove</button></div>' +
+            (c.archived ? '<div style="padding:0 2px 8px;"><span class="status-badge status-draft">Archived</span></div>' : '') +
+            '<div class="room-inputs">' +
+              '<div class="field-sm" style="grid-column:1/-1;"><label>Address</label><input type="text" data-field="address" value="'+escapeHtml(c.address||"")+'" placeholder="Street, town, postcode"></div>' +
+              '<div class="field-sm"><label>Phone</label><input type="text" data-field="phone" value="'+escapeHtml(c.phone||"")+'"></div>' +
+              '<div class="field-sm" style="grid-column:span 2;"><label>Email</label><input type="text" data-field="email" value="'+escapeHtml(c.email||"")+'"></div>' +
+              '<div class="field-sm" style="grid-column:1/-1;"><label>Notes</label><input type="text" data-field="notes" spellcheck="true" autocorrect="on" autocapitalize="sentences" value="'+escapeHtml(c.notes||"")+'"></div>' +
+            '</div>' +
+            '<div class="doc-actions"><button class="primary" data-action="newQuote">+ New quote for this customer</button><button data-action="archive">'+(c.archived?"Unarchive":"Archive")+'</button></div>' +
+          '</div>';
+    }
+
     function renderList(){
       var filtered = filteredSortedCustomers();
       var searching = !!custSearchTerm.trim();
@@ -3305,19 +3336,7 @@ window.addEventListener("error", function(e){
           : (custStatusFilter==="archived" ? '<div class="empty-state">No archived customers.</div>' : '<div class="empty-state">No customers yet — add your first one to start a quote.</div>');
       } else {
         custContainer.innerHTML = visible.map(function(c, idx){
-          return '<div class="room-card'+(c.archived?" archived":"")+'" data-id="'+c.id+'">' +
-            '<div class="room-card-header"><span class="room-index">C'+(idx+1)+'</span>' +
-            '<div class="room-name-wrap"><input class="room-name" type="text" data-field="name" value="'+escapeHtml(c.name)+'" aria-label="Customer name" autocomplete="off" enterkeyhint="done" spellcheck="true" autocorrect="on" autocapitalize="words"><span class="edit-icon" aria-hidden="true">✎</span></div>' +
-            '<button class="remove-room" data-action="delete">Remove</button></div>' +
-            (c.archived ? '<div style="padding:0 2px 8px;"><span class="status-badge status-draft">Archived</span></div>' : '') +
-            '<div class="room-inputs">' +
-              '<div class="field-sm" style="grid-column:1/-1;"><label>Address</label><input type="text" data-field="address" value="'+escapeHtml(c.address||"")+'" placeholder="Street, town, postcode"></div>' +
-              '<div class="field-sm"><label>Phone</label><input type="text" data-field="phone" value="'+escapeHtml(c.phone||"")+'"></div>' +
-              '<div class="field-sm" style="grid-column:span 2;"><label>Email</label><input type="text" data-field="email" value="'+escapeHtml(c.email||"")+'"></div>' +
-              '<div class="field-sm" style="grid-column:1/-1;"><label>Notes</label><input type="text" data-field="notes" spellcheck="true" autocorrect="on" autocapitalize="sentences" value="'+escapeHtml(c.notes||"")+'"></div>' +
-            '</div>' +
-            '<div class="doc-actions"><button class="primary" data-action="newQuote">+ New quote for this customer</button><button data-action="archive">'+(c.archived?"Unarchive":"Archive")+'</button></div>' +
-          '</div>';
+          return expandedCustIds[c.id] ? renderCustomerCard(c, idx) : renderCustomerSummaryRow(c, idx);
         }).join("");
       }
       if (!searching && filtered.length > VISIBLE_CAP){
@@ -3355,6 +3374,7 @@ window.addEventListener("error", function(e){
       customers.push(c);
       bizPut("customers", cloneDoc(c)).catch(function(){ showToast("Couldn't save customer in this viewer"); });
       if (window.__syncTriggerUpload) window.__syncTriggerUpload();
+      expandedCustIds[c.id] = true;
       custSearchTerm = ""; searchInput.value = ""; custStatusFilter = "active"; custExpanded = false;
       renderList();
     });
@@ -3371,6 +3391,18 @@ window.addEventListener("error", function(e){
     });
 
     custContainer.addEventListener("click", function(e){
+      var custSummaryRow = e.target.closest("[data-cust-summary-id]");
+      if (custSummaryRow){
+        expandedCustIds[custSummaryRow.dataset.custSummaryId] = true;
+        renderList();
+        return;
+      }
+      if (e.target.closest('[data-action="collapse"]')){
+        var collapseCard = e.target.closest(".room-card");
+        delete expandedCustIds[collapseCard.dataset.id];
+        renderList();
+        return;
+      }
       var newQuoteBtn = e.target.closest('[data-action="newQuote"]');
       if (newQuoteBtn){
         var card = newQuoteBtn.closest(".room-card");
@@ -3471,6 +3503,7 @@ window.addEventListener("error", function(e){
       var c = customers.filter(function(x){return x.id===id;})[0];
       if (!c) return;
       custStatusFilter = "all"; custExpanded = true; custSearchTerm = ""; searchInput.value = "";
+      expandedCustIds[id] = true;
       renderList();
       setTimeout(function(){
         var card = custContainer.querySelector('.room-card[data-id="'+id+'"]');
@@ -3621,7 +3654,7 @@ window.addEventListener("error", function(e){
       return opts;
     }
     function lineItemsHtml(doc){
-      var priceItems = window.__getPriceListItems ? window.__getPriceListItems() : [];
+      var priceItems = (doc.docType==="quote" && window.__getPriceListItems) ? window.__getPriceListItems() : [];
       var chipsHtml = "";
       if (priceItems.length){
         chipsHtml = '<div class="li-chip-label">Add from your price list</div><div class="li-chips">' +
