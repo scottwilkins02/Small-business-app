@@ -352,6 +352,24 @@
   .li-field input:focus{border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--navy-soft);}
   .li-cards .li-total{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--ink);}
 
+  /* Price list modal */
+  .priceListModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:flex-end;justify-content:center;}
+  .priceListModal.open{display:flex;}
+  .priceListModal-content{background:#fff;width:100%;max-height:85vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;max-width:640px;box-shadow:0 -4px 20px rgba(0,0,0,0.15);}
+  .priceListModal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid var(--line);flex-shrink:0;}
+  .priceListModal-header h3{margin:0;font-size:17px;font-weight:600;color:var(--ink);}
+  .priceListModal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-soft);padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;}
+  .priceListModal-close:active{opacity:0.6;}
+  .priceListModal-items{overflow-y:auto;flex:1;padding:12px;}
+  .priceListModal-item{display:block;width:100%;text-align:left;background:var(--navy-soft);border:1px solid var(--navy);border-radius:12px;padding:12px;margin-bottom:8px;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;transition:all 0.15s ease;position:relative;}
+  .priceListModal-item:active{background:var(--navy);color:#fff;transform:scale(0.98);}
+  .priceListModal-item.added{animation:priceItemAdded 0.4s ease;}
+  @keyframes priceItemAdded {
+    0% { background:var(--moss); color:#fff; }
+    50% { background:var(--moss); color:#fff; }
+    100% { background:var(--navy-soft); color:var(--navy); }
+  }
+
   .doc-totals{display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-faint);width:100%;}
   .doc-totals .row{display:flex;gap:14px;width:220px;max-width:100%;justify-content:space-between;}
   .doc-totals .row.grand{flex-direction:column;align-items:flex-end;gap:0;width:auto;max-width:100%;font-weight:700;font-family:'IBM Plex Mono',monospace;border-top:1px dashed var(--line);padding-top:8px;margin-top:4px;color:var(--ink);}
@@ -3657,10 +3675,7 @@ window.addEventListener("error", function(e){
       var priceItems = (doc.docType==="quote" && window.__getPriceListItems) ? window.__getPriceListItems() : [];
       var chipsHtml = "";
       if (priceItems.length){
-        chipsHtml = '<div class="li-chip-label">Add from your price list</div><div class="li-chips">' +
-          priceItems.map(function(pi){
-            return '<button type="button" class="li-chip" data-priceitem="'+pi.id+'">+ '+escapeHtml(pi.name)+' · '+fmtCost(pi.price)+'</button>';
-          }).join("") + '</div>';
+        chipsHtml = '<button type="button" class="add-line-btn" data-action="openPriceListModal" style="margin-bottom:8px;">+ Add from your price list</button>';
       }
       var rows = (doc.lineItems||[]).map(function(li){
         var total = num(li.qty)*num(li.unitPrice);
@@ -4209,21 +4224,9 @@ window.addEventListener("error", function(e){
         renderList();
         return;
       }
-      var chip = e.target.closest("[data-priceitem]");
-      if (chip){
-        var priceItems = window.__getPriceListItems ? window.__getPriceListItems() : [];
-        var pi = priceItems.filter(function(x){ return x.id===chip.dataset.priceitem; })[0];
-        if (pi){
-          doc.lineItems = doc.lineItems||[];
-          var onlyBlank = doc.lineItems.length===1 && !doc.lineItems[0].description && !num(doc.lineItems[0].unitPrice);
-          if (onlyBlank){
-            doc.lineItems[0].description = pi.name; doc.lineItems[0].qty = 1; doc.lineItems[0].unitPrice = pi.price;
-          } else {
-            doc.lineItems.push({id:genId("li"), description:pi.name, qty:1, unitPrice:pi.price});
-          }
-          saveDoc(doc);
-          renderList();
-        }
+      if (e.target.dataset.action==="openPriceListModal"){
+        window.__currentDocForPriceListModal = doc;
+        openPriceListModal();
         return;
       }
       if (e.target.dataset.action==="addLine"){
@@ -4416,6 +4419,63 @@ window.addEventListener("error", function(e){
         if (window.__syncTriggerUpload) window.__syncTriggerUpload();
       }
     };
+  }
+
+  /* ============ Price List Modal ============ */
+  window.__currentDocForPriceListModal = null;
+
+  function openPriceListModal(){
+    var modal = document.getElementById("priceListModal");
+    var itemsContainer = document.getElementById("priceListModalItems");
+    var priceItems = window.__getPriceListItems ? window.__getPriceListItems() : [];
+    
+    if (!priceItems.length){
+      itemsContainer.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-faint);">No items in your price list yet.</div>';
+    } else {
+      itemsContainer.innerHTML = priceItems.map(function(pi){
+        return '<button type="button" class="priceListModal-item" data-pi-id="'+pi.id+'" data-pi-name="'+escapeHtml(pi.name)+'" data-pi-price="'+pi.price+'">+ '+escapeHtml(pi.name)+' · '+fmtCost(pi.price)+'</button>';
+      }).join("");
+    }
+    
+    modal.classList.add("open");
+  }
+
+  function closePriceListModal(){
+    var modal = document.getElementById("priceListModal");
+    modal.classList.remove("open");
+    window.__currentDocForPriceListModal = null;
+  }
+
+  function addPriceItemToCurrentDoc(piId, piName, piPrice){
+    var doc = window.__currentDocForPriceListModal;
+    if (!doc) return;
+    
+    doc.lineItems = doc.lineItems||[];
+    var onlyBlank = doc.lineItems.length===1 && !doc.lineItems[0].description && !num(doc.lineItems[0].unitPrice);
+    if (onlyBlank){
+      doc.lineItems[0].description = piName; doc.lineItems[0].qty = 1; doc.lineItems[0].unitPrice = piPrice;
+    } else {
+      doc.lineItems.push({id:genId("li"), description:piName, qty:1, unitPrice:piPrice});
+    }
+    
+    if (quotesMod && quotesMod.persistDocument){
+      quotesMod.persistDocument(doc);
+    }
+    
+    // Show toast notification
+    showToast(piName + " added");
+    
+    // Highlight the item briefly
+    var btn = document.querySelector('[data-pi-id="'+piId+'"]');
+    if (btn){
+      btn.classList.add("added");
+      setTimeout(function(){ btn.classList.remove("added"); }, 400);
+    }
+    
+    // Re-render the quote list to show the new line item
+    if (quotesMod && quotesMod.renderList){
+      quotesMod.renderList();
+    }
   }
 
   /* ============ Templates module ============ */
@@ -6573,9 +6633,50 @@ window.addEventListener("error", function(e){
   });
   sheetScrimEl.addEventListener("click", closeBreakdown);
 
+  /* Price List Modal event listeners */
+  var priceListModal = document.getElementById("priceListModal");
+  var priceListCloseBtn = document.querySelector("[data-action=\"closePriceListModal\"]");
+  
+  if (priceListCloseBtn){
+    priceListCloseBtn.addEventListener("click", closePriceListModal);
+  }
+  
+  if (priceListModal){
+    priceListModal.addEventListener("click", function(e){
+      if (e.target === priceListModal){
+        closePriceListModal();
+      }
+    });
+  }
+  
+  // Handle clicks on price list items
+  document.addEventListener("click", function(e){
+    var modalItem = e.target.closest(".priceListModal-item");
+    if (modalItem){
+      var piId = modalItem.dataset.piId;
+      var piName = modalItem.dataset.piName;
+      var piPrice = Number(modalItem.dataset.piPrice)||0;
+      addPriceItemToCurrentDoc(piId, piName, piPrice);
+    }
+  });
+
   switchToTab("dashboard");
   refreshMobileBar();
 })();
 </script>
+
+<!-- Price List Modal -->
+<div id="priceListModal" class="priceListModal">
+  <div class="priceListModal-content">
+    <div class="priceListModal-header">
+      <h3>Add from price list</h3>
+      <button class="priceListModal-close" data-action="closePriceListModal">✕</button>
+    </div>
+    <div class="priceListModal-items" id="priceListModalItems">
+      <!-- Items will be populated here -->
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
