@@ -75,7 +75,7 @@
   .splash-screen{
     position:fixed;inset:0;z-index:1000;overflow:hidden;
     background:linear-gradient(165deg, #14274A 0%, #1B3A6B 52%, #17325C 100%);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
     gap:34px;padding:24px;text-align:center;transition:opacity .42s ease;
   }
   .splash-screen.hide{opacity:0;pointer-events:none;}
@@ -103,6 +103,7 @@
   .splash-dots span:nth-child(2){animation-delay:.15s;}
   .splash-dots span:nth-child(3){animation-delay:.3s;}
   @keyframes splashPulse{ 0%,80%,100%{opacity:.25;transform:scale(0.85);} 40%{opacity:1;transform:scale(1);} }
+  .splash-copyright{position:relative;font-size:10.5px;color:rgba(255,255,255,0.48);max-width:300px;line-height:1.35;margin-top:auto;animation:splashTextIn .55s ease-out .35s both;}
   input,select{font-family:inherit;}
   a{color:var(--blue);}
   :focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
@@ -589,6 +590,7 @@
     <div class="splash-slogan" id="splashSlogan" hidden></div>
   </div>
   <div class="splash-dots"><span></span><span></span><span></span></div>
+  <div class="splash-copyright">© 2026 Morx. All rights reserved.<br>Morx™ is a trademark of Morx.</div>
 </div>
 <datalist id="descSuggestions"></datalist>
 <svg style="display:none" aria-hidden="true">
